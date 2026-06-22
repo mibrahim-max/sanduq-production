@@ -2038,7 +2038,7 @@ export default function App() {
   const unread = notifs.filter(n => !n.read).length;
   const totalSaved = sanduqs.reduce((a,g) => a+g.pot, 0);
   const totalGoal  = sanduqs.reduce((a,g) => a+g.goal, 0);
-  const overallPct = totalSaved / totalGoal;
+  const overallPct = totalGoal > 0 ? totalSaved / totalGoal : 0;
   const shown = cat==="All" ? sanduqs : sanduqs.filter(g=>g.cat===cat);
 
   const NC = { payment:{color:C.green,bg:C.greenLt}, vote:{color:C.purple,bg:C.purpleLt}, warning:{color:C.amber,bg:C.amberLt}, reminder:{color:C.cyan,bg:C.cyanLt}, member:{color:C.blue,bg:C.blueLt} };
@@ -2112,16 +2112,18 @@ export default function App() {
               </div>
             </div>
 
-            {/* Search */}
+            {/* Search — only useful once there are several groups */}
+            {!loading && sanduqs.length >= 4 && (
             <div style={{ display:"flex", alignItems:"center", gap:10, background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"13px 16px", marginBottom:20 }}>
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={C.textDim} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
               <input placeholder="Search Sanduqs..." style={{ flex:1, border:"none", background:"none", fontSize:15, color:C.text }} />
             </div>
+            )}
           </div>
 
           {/* Stats row */}
           <div style={{ padding:"0 18px", marginBottom:16, display:"flex", gap:10 }}>
-            {[{label:"Total saved",val:`$${totalSaved.toLocaleString()}`},{label:"Sanduqs",val:String(sanduqs.length)},{label:"Friends",val:"12"}].map(s => (
+            {[{label:"Total saved",val:`$${totalSaved.toLocaleString()}`},{label:"Sanduqs",val:String(sanduqs.length)},{label:"Active",val:String(sanduqs.filter(g=>g.status!=="completed").length)}].map(s => (
               <div key={s.label} style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"13px 12px" }}>
                 <div style={{ fontSize:11, color:C.textMid, fontWeight:500, marginBottom:8 }}>{s.label}</div>
                 {loading ? <Sk w={48} h={20} /> : <div style={{ fontSize:s.label==="Total saved"?18:20, fontWeight:800, color:C.text, letterSpacing:-0.5, fontFamily:"'DM Mono',monospace" }}>{s.val}</div>}
@@ -2130,6 +2132,7 @@ export default function App() {
           </div>
 
           {/* Overall progress */}
+          {!loading && sanduqs.length > 0 && (
           <div style={{ padding:"0 18px", marginBottom:18 }}>
             <div style={{ background:`linear-gradient(135deg,${C.surface2} 0%,${C.surface} 100%)`, border:`1px solid ${C.border2}`, borderRadius:18, padding:"18px 18px 20px" }}>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
@@ -2149,13 +2152,20 @@ export default function App() {
               </div>
             </div>
           </div>
+          )}
 
-          {/* Category chips */}
-          <div style={{ padding:"0 18px", marginBottom:18, display:"flex", gap:9, overflowX:"auto" }}>
-            {CATS.map(c => (
-              <button key={c} onClick={()=>setCat(c)} style={{ padding:"9px 18px", borderRadius:22, whiteSpace:"nowrap", fontSize:14, fontWeight:600, background:cat===c?C.green:C.surface, color:cat===c?"#070B14":C.textMid, border:`1px solid ${cat===c?C.green:C.border}`, transition:"all .15s" }}>{c}</button>
-            ))}
-          </div>
+          {/* Category chips — only show categories you actually have */}
+          {!loading && sanduqs.length > 0 && (() => {
+            const used = ["All", ...CATS.filter(c => c !== "All" && sanduqs.some(g => g.cat === c))];
+            if (used.length <= 1) return null; // just "All" — no point showing a filter
+            return (
+              <div style={{ padding:"0 18px", marginBottom:18, display:"flex", gap:9, overflowX:"auto" }}>
+                {used.map(c => (
+                  <button key={c} onClick={()=>setCat(c)} style={{ padding:"9px 18px", borderRadius:22, whiteSpace:"nowrap", fontSize:14, fontWeight:600, background:cat===c?C.green:C.surface, color:cat===c?"#070B14":C.textMid, border:`1px solid ${cat===c?C.green:C.border}`, transition:"all .15s" }}>{c}</button>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Sanduq cards */}
           <div style={{ padding:"0 18px" }}>
@@ -2509,10 +2519,7 @@ export default function App() {
             <SurfaceCard>
               <Eyebrow>Your payment handles</Eyebrow>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim, marginBottom:10 }}>Shown to your group when you're the treasurer collecting funds.</div>
-              {[
-                { app:"Venmo",   handle:"@jordan-k",      dot:"#3D95CE" },
-                { app:"Cash App", handle:"$jordank",       dot:"#00D632" },
-              ].map((m,i,arr) => (
+              {[].map((m,i,arr) => (
                 <div key={m.app}>
                   <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 0" }}>
                     <div style={{ width:40, height:40, borderRadius:12, background:C.surface2, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, color:m.dot }}>●</div>
@@ -2531,7 +2538,8 @@ export default function App() {
               </button>
             </SurfaceCard>
 
-            {/* Notification channel */}
+            {/* Notification channel — hidden until notifications are wired */}
+            {false && (
             <SurfaceCard>
               <Eyebrow>Notification channel</Eyebrow>
               <div style={{ display:"flex", gap:8, marginBottom:14 }}>
@@ -2541,8 +2549,9 @@ export default function App() {
                   </button>
                 ))}
               </div>
-              <input value={channel==="sms"?phone:email} onChange={e=>channel==="sms"?setPhone(e.target.value):setEmail(e.target.value)} style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1px solid ${C.border}`, background:C.surface2, fontFamily:"'DM Mono',monospace", fontSize:14, color:C.text }} />
+              <input value={channel==="sms"?phone:""} onChange={e=>setPhone(e.target.value)} style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1px solid ${C.border}`, background:C.surface2, fontFamily:"'DM Mono',monospace", fontSize:14, color:C.text }} />
             </SurfaceCard>
+            )}
 
             {/* Notification prefs */}
             <SurfaceCard style={{ padding:"10px 18px" }}>
