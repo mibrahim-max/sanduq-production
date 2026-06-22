@@ -1983,16 +1983,23 @@ export default function App() {
   const [activeGroup, setActiveGroup] = useState(null);
   const [activeLiveGroup, setActiveLiveGroup] = useState(null);
   const [myId, setMyId] = useState(null);
+  const [me, setMe] = useState(ME); // real signed-in identity {name, initials, color}
   const [sanduqs, setSanduqs] = useState(LIVE ? [] : SANDUQS);
   const [joinCode, setJoinCode] = useState("");
   const [joinErr, setJoinErr] = useState(null);
   const [joinBusy, setJoinBusy] = useState(false);
 
+  function makeIdentity(name, color) {
+    const initials = (name || "?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+    return { id: 1, name: name || "Member", initials, color: color || "#3B8EF5" };
+  }
+
   async function loadLive() {
-    const [rows, contribs, uid] = await Promise.all([
-      DB.fetchMyGroups(), DB.fetchContribRows(), DB.currentUserId(),
+    const [rows, contribs, uid, profile] = await Promise.all([
+      DB.fetchMyGroups(), DB.fetchContribRows(), DB.currentUserId(), DB.fetchMyProfile(),
     ]);
     setMyId(uid);
+    if (profile) setMe(makeIdentity(profile.display_name, profile.avatar_color));
     setSanduqs(rows.map((r, i) => mapLiveGroup(r, contribs, uid, i)));
   }
 
@@ -2046,7 +2053,8 @@ export default function App() {
   if (!authed) return (
     <div>
       <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}`}</style>
-      <Onboarding onDone={async ()=>{
+      <Onboarding onDone={async (profile)=>{
+        if (profile && profile.name) setMe(makeIdentity(profile.name, profile.color));
         setLoading(true); setAuthed(true);
         if (LIVE) { try { await loadLive(); } catch (e) { console.error(e); } setLoading(false); }
         else setTimeout(()=>setLoading(false),1100);
@@ -2100,11 +2108,7 @@ export default function App() {
                 <Wordmark size={20} />
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <button onClick={()=>setScreen("messages")} style={{ width:44, height:44, borderRadius:"50%", background:C.surface, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", position:"relative", cursor:"pointer" }}>
-                  <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.35 8.5 8.5 0 0 1-3.4-.7L3 21l1.85-5.55A8.38 8.38 0 0 1 4 11.5a8.5 8.5 0 0 1 8.5-8.5 8.38 8.38 0 0 1 8.5 8.5Z"/></svg>
-                  {DM_THREADS.reduce((a,t)=>a+t.unread,0)>0 && <div style={{ position:"absolute", top:8, right:9, width:8, height:8, borderRadius:"50%", background:C.blue, boxShadow:`0 0 0 2px ${C.surface}` }} />}
-                </button>
-                <button onClick={()=>setScreen("profile")} style={{ width:44, height:44, borderRadius:"50%", background:C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:700, color:"#070B14", border:"none", cursor:"pointer" }}>JK</button>
+                <button onClick={()=>setScreen("profile")} style={{ width:44, height:44, borderRadius:"50%", background:me.color || C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:700, color:"#070B14", border:"none", cursor:"pointer" }}>{me.initials}</button>
               </div>
             </div>
 
@@ -2447,15 +2451,16 @@ export default function App() {
         <div>
           <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"56px 20px 24px", borderBottom:`1px solid ${C.border}` }}>
             <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-              <div style={{ width:56, height:56, borderRadius:"50%", background:C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:700, color:"#070B14" }}>JK</div>
+              <div style={{ width:56, height:56, borderRadius:"50%", background:me.color || C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:700, color:"#070B14" }}>{me.initials}</div>
               <div>
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:700, color:C.text }}>Jordan K.</div>
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:2 }}>Member since Jan 2025</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:700, color:C.text }}>{me.name}</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:2 }}>Sanduq member</div>
               </div>
             </div>
           </div>
           <div style={{ padding:16 }}>
-            {/* Friends */}
+            {/* Friends — hidden until wired to real data */}
+            {false && (
             <SurfaceCard>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
                 <Eyebrow>Friends · {friends.filter(f=>f.status==="friend").length}</Eyebrow>
@@ -2490,7 +2495,7 @@ export default function App() {
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.name}</div>
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim }}>{f.mutual} mutual friends</div>
                     </div>
-                    <button onClick={()=>setScreen("messages")} style={{ width:34, height:34, borderRadius:"50%", background:C.surface2, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                    <button style={{ width:34, height:34, borderRadius:"50%", background:C.surface2, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
                       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.35 8.5 8.5 0 0 1-3.4-.7L3 21l1.85-5.55A8.38 8.38 0 0 1 4 11.5a8.5 8.5 0 0 1 8.5-8.5 8.38 8.38 0 0 1 8.5 8.5Z"/></svg>
                     </button>
                   </div>
@@ -2498,6 +2503,7 @@ export default function App() {
                 </div>
               ))}
             </SurfaceCard>
+            )}
 
             {/* Payment handles */}
             <SurfaceCard>
@@ -2562,9 +2568,7 @@ export default function App() {
       <div style={{ position:"fixed", bottom:0, left:0, right:0, background:`${C.bg}f2`, backdropFilter:"blur(12px)", borderTop:`1px solid ${C.border}`, display:"flex", alignItems:"center", paddingBottom:22, paddingTop:12, zIndex:100 }}>
         {[
           { id:"home", icon:"home" },
-          { id:"calendar", icon:"calendar" },
           { id:"create", isAction:true },
-          { id:"activity", icon:"activity" },
           { id:"profile", icon:"profile" },
         ].map(t => (
           <button key={t.id} onClick={()=>setScreen(t.id)} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor:"pointer", position:"relative" }}>
