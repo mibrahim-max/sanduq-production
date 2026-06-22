@@ -34,8 +34,10 @@ export async function currentSession(): Promise<Session | null> {
 export async function updateDisplayName(name: string): Promise<void> {
   const session = await currentSession();
   if (!session) throw new Error("Not signed in");
+  // upsert (not update) so it works whether or not the trigger has
+  // created the profile row yet — avoids the signup timing race.
   const { error } = await sb().from("profiles")
-    .update({ display_name: name }).eq("id", session.user.id);
+    .upsert({ id: session.user.id, display_name: name }, { onConflict: "id" });
   if (error) throw new Error(error.message);
 }
 
@@ -71,6 +73,15 @@ export async function createGroup(input: {
 export async function joinGroup(groupId: string): Promise<void> {
   const { error } = await sb().rpc("rpc_join_group", { p_group: groupId });
   if (error) throw new Error(error.message);
+}
+
+// Preview a group for an invite landing page. Uses a SECURITY DEFINER RPC so
+// a not-yet-member (or not-yet-signed-in) person can see just the name/terms.
+export interface InviteInfo { id: string; name: string; category: string; join_policy: string; monthly_cents: number; goal_cents: number; months_in: number; }
+export async function fetchInviteInfo(groupId: string): Promise<InviteInfo | null> {
+  const { data, error } = await sb().rpc("rpc_invite_info", { p_group: groupId });
+  if (error || !data || (Array.isArray(data) && data.length === 0)) return null;
+  return (Array.isArray(data) ? data[0] : data) as InviteInfo;
 }
 
 // ── Group detail (everything one screen needs) ───────────────
