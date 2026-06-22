@@ -792,7 +792,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
   const [showSuccession, setShowSuccession] = useState(false);
   const [successionMode, setSuccessionMode] = useState("handoff"); // "handoff" (treasurer steps down) | "force" (member removes)
   const [nominee, setNominee] = useState(null);
-  const members = ALL_MEMBERS[g.id];
+  const members = ALL_MEMBERS[g.id] || [];
   const me = members.find(m => m.isMe);
   const isTreasurer = me && me.id === treasurerId;
   const MISS_LIMIT = 3;
@@ -2296,7 +2296,7 @@ export default function App() {
               </div>
             )}
             {!loading && shown.map(g => {
-              const members = ALL_MEMBERS[g.id];
+              const members = ALL_MEMBERS[g.id] || [];
               const pct = g.pot / g.goal;
               return (
                 <div key={g.id} onClick={()=>g.live ? setActiveLiveGroup(g) : setActiveGroup(g)} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:22, marginBottom:16, cursor:"pointer", overflow:"hidden", transition:"transform .18s, border-color .18s" }}
