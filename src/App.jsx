@@ -1638,7 +1638,7 @@ function CreateScreen({ onBack, onCreate }) {
 
 // ── Onboarding (phone-first) ───────────────────────────────────
 
-function Onboarding({ onDone }) {
+function Onboarding({ onDone, invite }) {
   const [step, setStep] = useState("welcome"); // welcome | phone | code | profile
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -1704,10 +1704,27 @@ function Onboarding({ onDone }) {
         <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", textAlign:"center" }}>
           <div style={{ marginBottom:28 }}><Logo size={72} /></div>
           <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:34, fontWeight:800, color:C.text, letterSpacing:-1, marginBottom:12 }}>Sanduq</div>
-          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:C.textMid, lineHeight:1.55, maxWidth:300 }}>
-            Save together, decide together. Group savings for trips, gifts, and the moments that matter.
-          </div>
+          {invite ? (
+            <div style={{ background:C.blueLt, border:`1px solid ${C.blue}55`, borderRadius:16, padding:"16px 18px", maxWidth:320, marginBottom:6 }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, color:C.text, lineHeight:1.5 }}>
+                You've been invited to join<br/><strong style={{ fontSize:17 }}>{invite.name}</strong>
+              </div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:8, lineHeight:1.45 }}>
+                {invite.join_policy === "catchup"
+                  ? `Saving $${(invite.monthly_cents/100).toLocaleString()}/month · joining ${invite.months_in} month${invite.months_in===1?"":"s"} in means a one-time catch-up of $${((invite.monthly_cents/100)*invite.months_in).toLocaleString()}.`
+                  : invite.join_policy === "prorata"
+                    ? `Saving $${(invite.monthly_cents/100).toLocaleString()}/month · you pay from today, shares stay proportional.`
+                    : `Saving $${(invite.monthly_cents/100).toLocaleString()}/month toward $${(invite.goal_cents/100).toLocaleString()}.`}
+              </div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim, marginTop:8 }}>Create your account to join.</div>
+            </div>
+          ) : (
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, color:C.textMid, lineHeight:1.55, maxWidth:300 }}>
+              Save together, decide together. Group savings for trips, gifts, and the moments that matter.
+            </div>
+          )}
           {/* mini feature row */}
+          {!invite && (
           <div style={{ display:"flex", gap:18, marginTop:34 }}>
             {[{e:"🎯",l:"Shared goals"},{e:"🗳️",l:"Group votes"},{e:"🔒",l:"No custody"}].map(f => (
               <div key={f.l} style={{ textAlign:"center" }}>
@@ -1716,6 +1733,7 @@ function Onboarding({ onDone }) {
               </div>
             ))}
           </div>
+          )}
         </div>
         <div>
           <PrimaryBtn onClick={()=>setStep("phone")}>Get started</PrimaryBtn>
@@ -1941,16 +1959,30 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
           )}
         </SurfaceCard>
 
-        {/* Invite by code */}
+        {/* Invite link */}
         <SurfaceCard>
           <Eyebrow>Invite</Eyebrow>
           <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, lineHeight:1.5, marginBottom:10 }}>
-            Share this group code. A friend signs in, taps "Join with a code" on their home screen, and pastes it. {g.join_policy === "catchup" ? "They'll owe the catch-up months your join policy sets." : g.join_policy === "closed" ? "Note: this group is set to locked, so joins will be rejected." : "They'll pay from their join date (pro-rata shares)."}
+            {g.join_policy === "closed"
+              ? "This group is locked, so new members can't join."
+              : "Share this link. Tapping it shows them the group and walks them through creating an account, then drops them right in."}
           </div>
-          <div style={{ display:"flex", gap:8, alignItems:"center", background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"11px 13px" }}>
-            <span style={{ flex:1, fontFamily:"'DM Mono',monospace", fontSize:11.5, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{group.id}</span>
-            <button onClick={()=>{ navigator.clipboard?.writeText(group.id); setCopied(true); setTimeout(()=>setCopied(false),1500); }} style={{ padding:"6px 12px", borderRadius:8, background:copied?C.greenLt:C.surface, border:`1px solid ${copied?C.green:C.border}`, fontSize:12, fontWeight:700, color:copied?C.green:C.textMid }}>{copied?"Copied ✓":"Copy"}</button>
-          </div>
+          {g.join_policy !== "closed" && (() => {
+            const link = `${window.location.origin}/?join=${group.id}`;
+            return (
+              <>
+                <div style={{ display:"flex", gap:8, alignItems:"center", background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"11px 13px", marginBottom:8 }}>
+                  <span style={{ flex:1, fontFamily:"'DM Mono',monospace", fontSize:11.5, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{link}</span>
+                  <button onClick={()=>{ navigator.clipboard?.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),1500); }} style={{ padding:"6px 12px", borderRadius:8, background:copied?C.greenLt:C.surface, border:`1px solid ${copied?C.green:C.border}`, fontSize:12, fontWeight:700, color:copied?C.green:C.textMid }}>{copied?"Copied ✓":"Copy"}</button>
+                </div>
+                <button onClick={async ()=>{
+                  const text = `Join my Sanduq "${g.name}" so we can save together: ${link}`;
+                  if (navigator.share) { try { await navigator.share({ title:`Join ${g.name} on Sanduq`, text, url:link }); } catch {} }
+                  else { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),1500); }
+                }} style={{ width:"100%", padding:12, borderRadius:12, background:group.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:"#070B14", cursor:"pointer" }}>Share invite</button>
+              </>
+            );
+          })()}
         </SurfaceCard>
 
         {/* Audit trail */}
@@ -1984,10 +2016,32 @@ export default function App() {
   const [activeLiveGroup, setActiveLiveGroup] = useState(null);
   const [myId, setMyId] = useState(null);
   const [me, setMe] = useState(ME); // real signed-in identity {name, initials, color}
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [savingName, setSavingName] = useState(false);
+  const [nameErr, setNameErr] = useState(null);
+
+  async function saveName() {
+    const n = nameDraft.trim();
+    if (!n || savingName) return;
+    setSavingName(true); setNameErr(null);
+    try {
+      if (LIVE) await DB.updateDisplayName(n);
+      setMe(makeIdentity(n, me.color));
+      setEditingName(false);
+    } catch (e) {
+      setNameErr(e.message);
+    } finally {
+      setSavingName(false);
+    }
+  }
   const [sanduqs, setSanduqs] = useState(LIVE ? [] : SANDUQS);
   const [joinCode, setJoinCode] = useState("");
   const [joinErr, setJoinErr] = useState(null);
   const [joinBusy, setJoinBusy] = useState(false);
+  // Invite-link flow: a ?join=GROUP_ID in the URL
+  const [pendingInvite, setPendingInvite] = useState(null); // {id, name, ...} or null
+  const [inviteJoining, setInviteJoining] = useState(false);
 
   function makeIdentity(name, color) {
     const initials = (name || "?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
@@ -2003,19 +2057,56 @@ export default function App() {
     setSanduqs(rows.map((r, i) => mapLiveGroup(r, contribs, uid, i)));
   }
 
+  // Read an invite id from the URL (?join=GROUP_ID), survive sign-in.
+  function readInviteId() {
+    try { return new URLSearchParams(window.location.search).get("join"); }
+    catch { return null; }
+  }
+  function clearInviteFromUrl() {
+    try { window.history.replaceState({}, "", window.location.pathname); } catch {}
+  }
+
+  async function acceptInvite(groupId) {
+    setInviteJoining(true); setJoinErr(null);
+    try {
+      await DB.joinGroup(groupId);
+      await loadLive();
+      setPendingInvite(null);
+      clearInviteFromUrl();
+    } catch (e) {
+      setJoinErr(e.message);
+    } finally {
+      setInviteJoining(false);
+    }
+  }
+
   useEffect(() => {
     if (!LIVE) return;
     (async () => {
+      const inviteId = readInviteId();
       try {
         const session = await DB.currentSession();
-        if (session) { await loadLive(); setAuthed(true); }
+        if (session) {
+          await loadLive();
+          setAuthed(true);
+          // Already signed in and arriving on an invite link → join right away.
+          if (inviteId) await acceptInvite(inviteId);
+        } else if (inviteId) {
+          // Not signed in yet — fetch the group name to show on the welcome screen,
+          // and remember it so we can auto-join after sign-up.
+          const info = await DB.fetchInviteInfo(inviteId);
+          if (info) setPendingInvite(info);
+        }
       } catch (e) { console.error(e); }
       finally { setBooting(false); }
     })();
   }, []);
 
   async function handleJoin() {
-    const code = joinCode.trim();
+    let code = joinCode.trim();
+    // Accept a full invite link or a bare id
+    const m = code.match(/[?&]join=([0-9a-fA-F-]{36})/);
+    if (m) code = m[1];
     if (!code || joinBusy) return;
     setJoinErr(null); setJoinBusy(true);
     try { await DB.joinGroup(code); setJoinCode(""); await loadLive(); }
@@ -2053,10 +2144,15 @@ export default function App() {
   if (!authed) return (
     <div>
       <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}`}</style>
-      <Onboarding onDone={async (profile)=>{
+      <Onboarding invite={pendingInvite} onDone={async (profile)=>{
         if (profile && profile.name) setMe(makeIdentity(profile.name, profile.color));
         setLoading(true); setAuthed(true);
-        if (LIVE) { try { await loadLive(); } catch (e) { console.error(e); } setLoading(false); }
+        if (LIVE) {
+          try { await loadLive(); } catch (e) { console.error(e); }
+          setLoading(false);
+          // Auto-join the group they were invited to.
+          if (pendingInvite) { try { await acceptInvite(pendingInvite.id); } catch (e) { console.error(e); } }
+        }
         else setTimeout(()=>setLoading(false),1100);
       }} />
     </div>
@@ -2462,8 +2558,22 @@ export default function App() {
           <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"56px 20px 24px", borderBottom:`1px solid ${C.border}` }}>
             <div style={{ display:"flex", alignItems:"center", gap:14 }}>
               <div style={{ width:56, height:56, borderRadius:"50%", background:me.color || C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:700, color:"#070B14" }}>{me.initials}</div>
-              <div>
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:700, color:C.text }}>{me.name}</div>
+              <div style={{ flex:1 }}>
+                {editingName ? (
+                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                    <input autoFocus value={nameDraft} onChange={e=>setNameDraft(e.target.value)} placeholder="Your name"
+                      style={{ flex:1, background:C.surface2, border:`1px solid ${C.blue}`, borderRadius:10, padding:"8px 12px", fontFamily:"'DM Sans',sans-serif", fontSize:18, fontWeight:700, color:C.text }} />
+                    <button onClick={saveName} disabled={!nameDraft.trim() || savingName} style={{ padding:"8px 14px", borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#070B14", cursor:"pointer" }}>{savingName?"…":"Save"}</button>
+                  </div>
+                ) : (
+                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:700, color:C.text }}>{me.name}</div>
+                    <button onClick={()=>{ setNameDraft(me.name==="New member"||me.name==="Member"?"":me.name); setEditingName(true); }} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    </button>
+                  </div>
+                )}
+                {nameErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:4 }}>{nameErr}</div>}
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:2 }}>Sanduq member</div>
               </div>
             </div>
