@@ -129,6 +129,16 @@ export async function currentUserId(): Promise<string | null> {
   return s?.user.id ?? null;
 }
 
+export interface MyProfile { id: string; display_name: string; avatar_color: string; }
+export async function fetchMyProfile(): Promise<MyProfile | null> {
+  const s = await currentSession();
+  if (!s) return null;
+  const { data, error } = await sb().from("profiles")
+    .select("id, display_name, avatar_color").eq("id", s.user.id).single();
+  if (error) return { id: s.user.id, display_name: "Member", avatar_color: "#3B8EF5" };
+  return data as MyProfile;
+}
+
 /** All contribution rows visible to me (mine + my groups'), for home-card pots and statuses. */
 export interface ContribRow { id: string; group_id: string; member_id: string; amount_cents: number; status: string; cycle: string; }
 export async function fetchContribRows(): Promise<ContribRow[]> {
