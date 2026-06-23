@@ -213,6 +213,18 @@ export async function fetchCalendar(): Promise<CalEvent[]> {
   return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
+// ── Notifications (derived feed) ─────────────────────────────
+export interface Notif { id: string; kind: string; title: string; subtitle: string | null; at: string; unread: boolean; group_id: string | null; }
+export async function fetchNotifications(): Promise<Notif[]> {
+  const { data, error } = await sb().rpc("rpc_notifications");
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Notif[];
+}
+export async function markNotificationsSeen(): Promise<void> {
+  const { error } = await sb().rpc("rpc_mark_notifications_seen");
+  if (error) throw new Error(error.message);
+}
+
 export async function joinGroup(groupId: string): Promise<void> {
   const { error } = await sb().rpc("rpc_join_group", { p_group: groupId });
   if (error) throw new Error(error.message);
