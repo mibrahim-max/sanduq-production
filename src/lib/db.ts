@@ -122,6 +122,15 @@ export async function sharedGroups(friendId: string): Promise<{ id: string; name
   return (data ?? []) as { id: string; name: string }[];
 }
 
+export async function logExpense(groupId: string, description: string, amountCents: number): Promise<void> {
+  const s = await currentSession();
+  if (!s) throw new Error("Not signed in");
+  const { error } = await sb().from("expenses").insert({
+    group_id: groupId, logged_by: s.user.id, description, amount_cents: amountCents,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function joinGroup(groupId: string): Promise<void> {
   const { error } = await sb().rpc("rpc_join_group", { p_group: groupId });
   if (error) throw new Error(error.message);
