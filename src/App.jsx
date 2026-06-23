@@ -2365,6 +2365,24 @@ export default function App() {
   const [calEvents, setCalEvents] = useState([]);
   const [calTab, setCalTab] = useState("upcoming");
   const [calLoading, setCalLoading] = useState(false);
+  // Notifications
+  const [notifsOpen, setNotifsOpen] = useState(false);
+  const [notifList, setNotifList] = useState([]);
+  const [notifUnread, setNotifUnread] = useState(0);
+
+  async function loadNotifications() {
+    if (!LIVE) return;
+    try {
+      const list = await DB.fetchNotifications();
+      setNotifList(list);
+      setNotifUnread(list.filter(n => n.unread).length);
+    } catch (e) { console.error(e); }
+  }
+  async function openNotifications() {
+    setNotifsOpen(true);
+    await loadNotifications();
+    try { await DB.markNotificationsSeen(); setNotifUnread(0); } catch {}
+  }
 
   async function loadCalendar() {
     if (!LIVE) return;
@@ -2453,6 +2471,7 @@ export default function App() {
     setMyId(uid);
     if (profile) { setMe(makeIdentity(profile.display_name, profile.avatar_color)); setHandles(profile.payment_handles || []); }
     try { const fr = await DB.fetchMyFriends(); setFriends(fr); } catch {}
+    try { const nl = await DB.fetchNotifications(); setNotifList(nl); setNotifUnread(nl.filter(n=>n.unread).length); } catch {}
     setSanduqs(rows.map((r, i) => mapLiveGroup(r, contribs, uid, i)));
   }
 
@@ -2595,6 +2614,46 @@ export default function App() {
       <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}::-webkit-scrollbar{width:0;height:0}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.2)}100%{transform:scale(1)}}@keyframes confettiFall{0%{transform:translateY(-14px) rotate(0deg);opacity:1}85%{opacity:1}100%{transform:translateY(340px) rotate(540deg);opacity:0}}@keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}`}</style>
 
       {/* HOME */}
+      {/* Notifications panel */}
+      {notifsOpen && (
+        <div onClick={()=>setNotifsOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:100, display:"flex", alignItems:"flex-start", justifyContent:"center", paddingTop:60 }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderRadius:20, width:"92%", maxWidth:440, maxHeight:"75vh", overflowY:"auto", border:`1px solid ${C.border}` }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"18px 20px", borderBottom:`1px solid ${C.border}`, position:"sticky", top:0, background:C.surface }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:18, fontWeight:800, color:C.text }}>Notifications</div>
+              <button onClick={()=>setNotifsOpen(false)} style={{ background:"none", border:"none", cursor:"pointer", fontSize:20, color:C.textMid }}>×</button>
+            </div>
+            {notifList.length === 0 ? (
+              <div style={{ textAlign:"center", padding:"40px 20px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.textDim }}>Nothing yet. Activity in your Sanduqs and friend requests will show up here.</div>
+            ) : (
+              <div style={{ padding:"6px 0" }}>
+                {notifList.map(n => {
+                  const d = new Date(n.at);
+                  const ago = (() => {
+                    const mins = Math.floor((Date.now()-d.getTime())/60000);
+                    if (mins<1) return "just now"; if (mins<60) return `${mins}m ago`;
+                    const hrs=Math.floor(mins/60); if (hrs<24) return `${hrs}h ago`;
+                    const days=Math.floor(hrs/24); return days<7?`${days}d ago`:d.toLocaleDateString();
+                  })();
+                  const icon = n.kind==="friend_request"?"👋":n.kind==="votes"?"🗳️":n.kind==="expenses"?"🧾":n.kind==="contributions"?"💸":n.kind==="distributions"?"💰":"🔔";
+                  const isFriend = n.kind==="friend_request";
+                  return (
+                    <div key={n.id} onClick={()=>{ if(isFriend){ setNotifsOpen(false); setScreen("profile"); } else if(n.group_id){ const g=sanduqs.find(s=>s.id===n.group_id); if(g){ setNotifsOpen(false); setActiveLiveGroup(g); } } }}
+                      style={{ display:"flex", gap:12, padding:"13px 20px", cursor:"pointer", background:n.unread?C.blueLt:"transparent", borderLeft:n.unread?`3px solid ${C.blue}`:"3px solid transparent" }}>
+                      <div style={{ fontSize:20, flexShrink:0 }}>{icon}</div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{n.title}</div>
+                        {n.subtitle && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{n.subtitle}</div>}
+                      </div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textDim, flexShrink:0 }}>{ago}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {screen==="home" && (
         <div>
           {/* Header */}
@@ -2605,6 +2664,10 @@ export default function App() {
                 <Wordmark size={20} />
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                <button onClick={openNotifications} style={{ position:"relative", width:44, height:44, borderRadius:"50%", background:C.surface, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  {notifUnread > 0 && <div style={{ position:"absolute", top:7, right:8, minWidth:16, height:16, padding:"0 4px", borderRadius:8, background:C.red, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", fontSize:10, fontWeight:700, color:"#fff", boxShadow:`0 0 0 2px ${C.surface}` }}>{notifUnread>9?"9+":notifUnread}</div>}
+                </button>
                 <button onClick={()=>setScreen("profile")} style={{ width:44, height:44, borderRadius:"50%", background:me.color || C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:700, color:"#070B14", border:"none", cursor:"pointer" }}>{me.initials}</button>
               </div>
             </div>
