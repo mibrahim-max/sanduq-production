@@ -2361,6 +2361,18 @@ export default function App() {
   const [friendErr, setFriendErr] = useState(null);
   const [friendMsg, setFriendMsg] = useState(null);
   const [codeCopied, setCodeCopied] = useState(false);
+  // Calendar
+  const [calEvents, setCalEvents] = useState([]);
+  const [calTab, setCalTab] = useState("upcoming");
+  const [calLoading, setCalLoading] = useState(false);
+
+  async function loadCalendar() {
+    if (!LIVE) return;
+    setCalLoading(true);
+    try { const ev = await DB.fetchCalendar(); setCalEvents(ev); }
+    catch (e) { console.error(e); }
+    finally { setCalLoading(false); }
+  }
 
   async function loadFriends() {
     if (!LIVE) return;
@@ -2490,6 +2502,7 @@ export default function App() {
   }, []);
 
   useEffect(() => { if (screen === "profile" && LIVE) loadFriends(); }, [screen]);
+  useEffect(() => { if (screen === "calendar" && LIVE) loadCalendar(); }, [screen]);
 
   async function handleJoin() {
     let code = joinCode.trim();
@@ -2837,62 +2850,96 @@ export default function App() {
         <div>
           <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"56px 20px 20px", borderBottom:`1px solid ${C.border}` }}>
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:26, fontWeight:800, color:C.text }}>Calendar</div>
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:4 }}>Payment due dates & goal milestones</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:4 }}>Due dates, goal milestones & open votes</div>
           </div>
           <div style={{ padding:16 }}>
-            {/* Mini month grid */}
-            <SurfaceCard>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
-                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, fontWeight:700, color:C.text }}>June 2025</span>
-                <div style={{ display:"flex", gap:6, fontSize:14, color:C.textDim }}>
-                  <span style={{ cursor:"pointer" }}>‹</span><span style={{ cursor:"pointer" }}>›</span>
-                </div>
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginBottom:6 }}>
-                {["S","M","T","W","T","F","S"].map((d,i) => <div key={i} style={{ textAlign:"center", fontSize:10, fontWeight:600, color:C.textDim }}>{d}</div>)}
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
-                {Array.from({length:30}).map((_,i) => {
-                  const day = i+1;
-                  const due = [1,5].includes(day);
-                  const dueColor = day===1 ? C.blue : C.purple;
-                  return (
-                    <div key={i} style={{ aspectRatio:"1", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:8, background:due?`${dueColor}22`:"transparent", border:due?`1px solid ${dueColor}55`:"1px solid transparent" }}>
-                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:due?C.text:C.textMid, fontWeight:due?600:400 }}>{day}</span>
-                      {due && <div style={{ width:4, height:4, borderRadius:"50%", background:dueColor, marginTop:2 }} />}
-                    </div>
-                  );
-                })}
-              </div>
-            </SurfaceCard>
+            {calLoading ? (
+              <SurfaceCard><div style={{ textAlign:"center", padding:"20px 0", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid }}>Loading…</div></SurfaceCard>
+            ) : calEvents.length === 0 ? (
+              <EmptyState icon="📅" title="Nothing scheduled" body="Payment due dates, goal milestones, and open votes will show up here once you join or create a Sanduq." />
+            ) : (() => {
+              const now = new Date();
+              const cy = now.getFullYear(), cm = now.getMonth();
+              const monthName = now.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+              const firstDay = new Date(cy, cm, 1).getDay();
+              const daysInMonth = new Date(cy, cm+1, 0).getDate();
+              const kindColor = (k) => k==="due"?C.blue : k==="vote"?C.purple : k==="milestone"?C.green : C.textMid;
+              // which days this month have events
+              const dayHas = {};
+              calEvents.forEach(e => { const d=new Date(e.date); if(d.getFullYear()===cy && d.getMonth()===cm){ (dayHas[d.getDate()] ||= new Set()).add(e.kind); } });
 
-            {/* Upcoming list */}
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:C.textMid, letterSpacing:0.5, textTransform:"uppercase", margin:"18px 2px 10px" }}>Upcoming</div>
-            {CALENDAR_EVENTS.length === 0 ? (
-              <EmptyState icon="📅" title="Nothing scheduled" body="Payment due dates and projected goal-completion milestones will show up here once you join a Sanduq." />
-            ) : (
-            <SurfaceCard style={{ padding:"6px 18px" }}>
-              {CALENDAR_EVENTS.map((e,i) => (
-                <div key={e.id}>
-                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 0" }}>
-                    <div style={{ width:44, height:44, borderRadius:12, background:`${e.color}1F`, border:`1px solid ${e.color}44`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:e.color, textTransform:"uppercase", fontWeight:500 }}>{e.date.split(" ")[0]}</span>
-                      <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, fontWeight:800, color:C.text, lineHeight:1 }}>{e.date.split(" ")[1]}</span>
+              const upcoming = calEvents.filter(e => new Date(e.date) >= now && e.kind !== "paid");
+              const recent = calEvents.filter(e => new Date(e.date) < now || e.kind === "paid").reverse();
+              const list = calTab==="upcoming" ? upcoming : recent;
+
+              return (
+                <>
+                  {/* Month grid */}
+                  <SurfaceCard>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, fontWeight:700, color:C.text, marginBottom:14 }}>{monthName}</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginBottom:6 }}>
+                      {["S","M","T","W","T","F","S"].map((d,i) => <div key={i} style={{ textAlign:"center", fontSize:10, fontWeight:600, color:C.textDim }}>{d}</div>)}
                     </div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:7 }}>
-                        <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{e.title}</span>
-                        {e.type==="goal" && <span style={{ fontSize:13 }}>{e.groupId===1?"🌍":e.groupId===2?"🎉":"🎓"}</span>}
-                      </div>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2 }}>{e.group}</div>
+                    <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
+                      {Array.from({length:firstDay}).map((_,i)=><div key={"x"+i} />)}
+                      {Array.from({length:daysInMonth}).map((_,i) => {
+                        const day=i+1; const kinds=dayHas[day]; const isToday=day===now.getDate();
+                        const color = kinds ? kindColor([...kinds][0]) : null;
+                        return (
+                          <div key={i} style={{ aspectRatio:"1", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:8, background:kinds?`${color}22`:"transparent", border:isToday?`1px solid ${C.text}55`:kinds?`1px solid ${color}55`:"1px solid transparent" }}>
+                            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:kinds||isToday?C.text:C.textMid, fontWeight:kinds||isToday?600:400 }}>{day}</span>
+                            {kinds && <div style={{ display:"flex", gap:2, marginTop:2 }}>{[...kinds].slice(0,3).map((k,j)=><div key={j} style={{ width:4, height:4, borderRadius:"50%", background:kindColor(k) }} />)}</div>}
+                          </div>
+                        );
+                      })}
                     </div>
-                    <Pill label={e.type==="due"?"Due":"Goal"} color={e.color} bg={`${e.color}1F`} />
+                    {/* legend */}
+                    <div style={{ display:"flex", gap:14, marginTop:14, flexWrap:"wrap" }}>
+                      {[["due","Due",C.blue],["vote","Vote",C.purple],["milestone","Goal",C.green]].map(([k,lbl,col]) => (
+                        <div key={k} style={{ display:"flex", alignItems:"center", gap:5 }}>
+                          <div style={{ width:7, height:7, borderRadius:"50%", background:col }} />
+                          <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textMid }}>{lbl}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </SurfaceCard>
+
+                  {/* Timeline tabs */}
+                  <div style={{ display:"flex", gap:8, margin:"18px 2px 12px" }}>
+                    {[["upcoming",`Upcoming${upcoming.length?` · ${upcoming.length}`:""}`],["recent",`Recent${recent.length?` · ${recent.length}`:""}`]].map(([k,lbl]) => (
+                      <button key={k} onClick={()=>setCalTab(k)} style={{ padding:"8px 16px", borderRadius:20, background:calTab===k?C.blue:C.surface, border:`1px solid ${calTab===k?C.blue:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:calTab===k?"#fff":C.textMid, cursor:"pointer" }}>{lbl}</button>
+                    ))}
                   </div>
-                  {i<CALENDAR_EVENTS.length-1 && <Divider />}
-                </div>
-              ))}
-            </SurfaceCard>
-            )}
+
+                  {list.length === 0 ? (
+                    <SurfaceCard><div style={{ textAlign:"center", padding:"16px 0", fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textDim }}>{calTab==="upcoming"?"Nothing upcoming.":"No history yet."}</div></SurfaceCard>
+                  ) : (
+                    <SurfaceCard style={{ padding:"6px 18px" }}>
+                      {list.map((e,i) => {
+                        const d = new Date(e.date);
+                        const color = kindColor(e.kind);
+                        return (
+                          <div key={e.id}>
+                            <div style={{ display:"flex", alignItems:"center", gap:12, padding:"14px 0" }}>
+                              <div style={{ width:44, height:44, borderRadius:12, background:`${color}1F`, border:`1px solid ${color}44`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:9, color:color, textTransform:"uppercase", fontWeight:500 }}>{d.toLocaleDateString(undefined,{month:"short"})}</span>
+                                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, fontWeight:800, color:C.text, lineHeight:1 }}>{d.getDate()}</span>
+                              </div>
+                              <div style={{ flex:1 }}>
+                                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{e.title}</div>
+                                {e.subtitle && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2 }}>{e.subtitle}</div>}
+                              </div>
+                              <Pill label={e.kind==="due"?"Due":e.kind==="vote"?"Vote":e.kind==="milestone"?"Goal":"Paid"} color={color} bg={`${color}1F`} />
+                            </div>
+                            {i<list.length-1 && <Divider />}
+                          </div>
+                        );
+                      })}
+                    </SurfaceCard>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -3109,6 +3156,7 @@ export default function App() {
       <div style={{ position:"fixed", bottom:0, left:0, right:0, background:`${C.bg}f2`, backdropFilter:"blur(12px)", borderTop:`1px solid ${C.border}`, display:"flex", alignItems:"center", paddingBottom:22, paddingTop:12, zIndex:100 }}>
         {[
           { id:"home", icon:"home" },
+          { id:"calendar", icon:"calendar" },
           { id:"create", isAction:true },
           { id:"profile", icon:"profile" },
         ].map(t => (
