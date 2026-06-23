@@ -1857,6 +1857,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const [voteBusy, setVoteBusy] = useState(false);
   const [voteErr, setVoteErr] = useState(null);
   const [ballotBusy, setBallotBusy] = useState(null);
+  const [tab, setTab] = useState("overview");
 
   async function propose() {
     const cents = Math.round(parseFloat(voteVal) * 100);
@@ -1962,6 +1963,21 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const profileOf = (id) => detail?.members.find(m => m.member_id === id)?.profiles;
   const missingRows = detail ? detail.members.filter(m => !m.removed && !cycleRows.some(c => c.member_id === m.member_id)).length : 0;
 
+  // Overview-tab derived values
+  const myConfirmedCents = detail ? detail.contributions.filter(c=>c.member_id===myId && c.status==="confirmed").reduce((a,c)=>a+c.amount_cents,0) : 0;
+  const openVotesCount = detail ? detail.votes.filter(v=>v.status==="open").length : 0;
+  const nextDue = (() => { const n=new Date(); const d=new Date(n.getFullYear(), n.getMonth()+1, 1); const days=Math.ceil((d-n)/86400000); return { label:d.toLocaleDateString(undefined,{month:"short",day:"numeric"}), days }; })();
+  const flaggedMembers = detail ? detail.members.filter(m=>!m.removed && m.misses>0) : [];
+  // Category-tinted header gradient
+  const catColor = (() => {
+    const c = g?.category;
+    if (c==="Travel") return ["#E8A04A","#7A4B1E"];
+    if (c==="Events") return ["#8B7BF0","#3A2E6E"];
+    if (c==="Gifts") return ["#E07AC0","#6E2E58"];
+    if (c==="Housing") return ["#4AB0A0","#1E4A44"];
+    return ["#3B8EF5","#1E3A5E"];
+  })();
+
   const statusPill = (s) => ({
     unpaid:      { label:"Not paid", color:C.textMid, bg:C.surface2 },
     marked_sent: { label:"Sent · awaiting confirm", color:C.amber, bg:C.amberLt },
@@ -1973,20 +1989,48 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   return (
     <div style={{ minHeight:"100vh", background:C.bg, paddingBottom:40 }}>
       <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}`}</style>
-      <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"52px 20px 20px", borderBottom:`1px solid ${C.border}` }}>
-        <button onClick={onBack} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"7px 14px 7px 10px", color:C.textMid, fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, marginBottom:16 }}>← Home</button>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ fontSize:30 }}>{group.emoji}</div>
+
+      {/* Gradient cover header */}
+      <div style={{ position:"relative", background:`linear-gradient(155deg, ${catColor[0]}, ${catColor[1]})`, padding:"52px 20px 70px", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(circle at 80% 20%, rgba(255,255,255,.18), transparent 60%)" }} />
+        <button onClick={onBack} style={{ position:"relative", background:"rgba(0,0,0,.25)", border:"none", borderRadius:20, padding:"7px 14px 7px 10px", color:"#fff", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, marginBottom:18 }}>← Back</button>
+        <div style={{ position:"relative", display:"flex", alignItems:"flex-start", gap:12 }}>
+          <div style={{ fontSize:34, lineHeight:1 }}>{group.emoji}</div>
           <div style={{ flex:1 }}>
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:800, color:C.text, letterSpacing:-0.5 }}>{group.name}</div>
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2 }}>Live · started {group.started} · {detail ? detail.members.filter(m=>!m.removed).length : "…"} members</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:28, fontWeight:800, color:"#fff", letterSpacing:-0.8, lineHeight:1.1, textShadow:"0 2px 12px rgba(0,0,0,.3)" }}>{group.name}</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"rgba(255,255,255,.85)", marginTop:4 }}>Started {group.started} · {detail ? detail.members.filter(m=>!m.removed).length : "…"} member{detail && detail.members.filter(m=>!m.removed).length===1?"":"s"}</div>
           </div>
           {isTreasurer && (
-            <button onClick={openEdit} title="Edit Sanduq" style={{ width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,.08)", border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+            <button onClick={openEdit} title="Edit Sanduq" style={{ width:40, height:40, borderRadius:"50%", background:"rgba(0,0,0,.25)", border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
             </button>
           )}
         </div>
+      </div>
+
+      {/* Progress card overlapping the header */}
+      {detail && (
+        <div style={{ margin:"-52px 16px 0", position:"relative", background:C.surface, border:`1px solid ${C.border}`, borderRadius:18, padding:"18px 20px", boxShadow:"0 8px 30px rgba(0,0,0,.35)" }}>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:10 }}>
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:500, color:C.text, letterSpacing:-1 }}>${(potCents/100).toLocaleString()}</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.textMid }}>of ${(g.goal_cents/100).toLocaleString()}</span>
+          </div>
+          <Bar pct={Math.min(1, potCents/g.goal_cents)} color={catColor[0]} h={7} />
+          <div style={{ display:"flex", justifyContent:"space-between", marginTop:8 }}>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:catColor[0] }}>{Math.round(100*potCents/g.goal_cents)}% funded</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid }}>${((g.goal_cents-potCents)/100).toLocaleString()} to go</span>
+          </div>
+        </div>
+      )}
+
+      {/* Tab bar */}
+      <div style={{ display:"flex", gap:4, padding:"18px 12px 0", overflowX:"auto", borderBottom:`1px solid ${C.border}` }}>
+        {[["overview","Overview"],["payments","Payments"],["votes","Votes"],["members","Members"],["chat","Chat"]].map(([k,lbl]) => (
+          <button key={k} onClick={()=>setTab(k)} style={{ position:"relative", padding:"10px 16px 14px", background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:tab===k?700:500, color:tab===k?C.blue:C.textMid }}>
+            {lbl}
+            {tab===k && <div style={{ position:"absolute", bottom:-1, left:12, right:12, height:2, borderRadius:2, background:C.blue }} />}
+          </button>
+        ))}
       </div>
 
       {editing && (() => {
@@ -2067,16 +2111,64 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
           </div>
         ) : <>
 
-        {/* Pot */}
-        <SurfaceCard>
-          <Eyebrow>Pot · confirmed by both parties</Eyebrow>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:10 }}>
-            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:500, color:C.text, letterSpacing:-1 }}>${(potCents/100).toLocaleString()}</span>
-            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid }}>of ${(g.goal_cents/100).toLocaleString()}</span>
+        {/* ===== OVERVIEW TAB ===== */}
+        {tab==="overview" && (<>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px" }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textDim, letterSpacing:1, textTransform:"uppercase" }}>Monthly Due</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:C.text, marginTop:8, letterSpacing:-0.5 }}>${(g.monthly_cents/100).toLocaleString()}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:4 }}>per member</div>
+            </div>
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px" }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textDim, letterSpacing:1, textTransform:"uppercase" }}>Next Payment</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:24, fontWeight:800, color:C.text, marginTop:8, letterSpacing:-0.5 }}>{nextDue.label}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:4 }}>{nextDue.days} day{nextDue.days===1?"":"s"} away</div>
+            </div>
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px" }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textDim, letterSpacing:1, textTransform:"uppercase" }}>Active Votes</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:openVotesCount>0?C.purpleBright:C.text, marginTop:8 }}>{openVotesCount}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:4 }}>{openVotesCount>0?"need attention":"none open"}</div>
+            </div>
+            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px" }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textDim, letterSpacing:1, textTransform:"uppercase" }}>Your Total</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:C.text, marginTop:8, letterSpacing:-0.5 }}>${(myConfirmedCents/100).toLocaleString()}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:4 }}>contributed</div>
+            </div>
           </div>
-          <Bar pct={Math.min(1, potCents/g.goal_cents)} color={group.bar} h={7} />
-        </SurfaceCard>
 
+          {flaggedMembers.map(m => (
+            <div key={m.member_id} style={{ display:"flex", gap:12, alignItems:"center", background:C.amberLt, border:`1px solid ${C.amber}44`, borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
+              <div style={{ width:30, height:30, borderRadius:"50%", background:C.amber, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:16, fontWeight:800, color:"#070B14" }}>!</div>
+              <div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.text }}>{(m.profiles?.display_name)||"A member"} has missed {m.misses} payment{m.misses>1?"s":""}</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:2 }}>{m.misses>=2?"One more miss triggers auto-removal with a pro-rata refund":"Catch-up owed before the next cycle"}</div>
+              </div>
+            </div>
+          ))}
+
+          <SurfaceCard>
+            <Eyebrow>Group Rules</Eyebrow>
+            <div style={{ marginTop:10 }}>
+              {[
+                g.exit_policy==="vote" ? "Group votes on exit refunds (set by creator)" : "Exit refunds follow the set policy",
+                g.join_policy==="catchup" ? "Late joiners catch up on missed months (set by creator)" : "New members pay from their join date",
+                "3 missed payments = auto-removal + pro-rata refund",
+                "Changes to terms require a simple majority vote",
+              ].map((r,i,arr) => (
+                <div key={i}>
+                  <div style={{ display:"flex", gap:10, padding:"11px 0" }}>
+                    <div style={{ width:6, height:6, borderRadius:"50%", background:catColor[0], marginTop:7, flexShrink:0 }} />
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.textMid, lineHeight:1.5 }}>{r}</div>
+                  </div>
+                  {i<arr.length-1 && <Divider />}
+                </div>
+              ))}
+            </div>
+          </SurfaceCard>
+        </>)}
+
+        {/* ===== PAYMENTS TAB: current cycle ===== */}
+        {tab==="payments" && (<>
         {/* Current cycle — the two-key handshake, live */}
         <SurfaceCard>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
@@ -2134,8 +2226,10 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             <button onClick={()=>act(()=>DB.openCycle(group.id), "cycle")} style={{ width:"100%", marginTop:10, padding:12, borderRadius:12, background:C.surface2, border:`1px solid ${C.border2}`, fontSize:13, fontWeight:600, color:C.text }}>Open this month's cycle for {missingRows} member{missingRows>1?"s":""}</button>
           )}
         </SurfaceCard>
+        </>)}
 
-        {/* Members */}
+        {/* ===== MEMBERS TAB ===== */}
+        {tab==="members" && (
         <SurfaceCard>
           <Eyebrow>Members · {detail.members.filter(m=>!m.removed).length}</Eyebrow>
           <div style={{ marginTop:8 }}>
@@ -2160,7 +2254,10 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             })}
           </div>
         </SurfaceCard>
+        )}
 
+        {/* ===== PAYMENTS TAB: expenses ===== */}
+        {tab==="payments" && (<>
         {/* Expenses */}
         <SurfaceCard>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -2196,8 +2293,10 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             </div>
           )}
         </SurfaceCard>
+        </>)}
 
-        {/* Votes */}
+        {/* ===== VOTES TAB ===== */}
+        {tab==="votes" && (
         <SurfaceCard>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <Eyebrow>Votes</Eyebrow>
@@ -2256,7 +2355,10 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             </div>
           )}
         </SurfaceCard>
+        )}
 
+        {/* ===== PAYMENTS TAB: invite + audit ===== */}
+        {tab==="payments" && (<>
         {/* Invite link */}
         <SurfaceCard>
           <Eyebrow>Invite</Eyebrow>
@@ -2325,6 +2427,16 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             </div>
           ))}
         </SurfaceCard>
+        </>)}
+
+        {/* ===== CHAT TAB (placeholder) ===== */}
+        {tab==="chat" && (
+          <div style={{ textAlign:"center", padding:"50px 20px" }}>
+            <div style={{ fontSize:40, marginBottom:14 }}>💬</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:17, fontWeight:700, color:C.text, marginBottom:6 }}>Group chat is coming soon</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:C.textMid, lineHeight:1.5, maxWidth:280, margin:"0 auto" }}>Soon you'll be able to coordinate payments and plans with your group right here.</div>
+          </div>
+        )}
         </>}
       </div>
     </div>
