@@ -1839,6 +1839,28 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const [edBusy, setEdBusy] = useState(false);
   const [edErr, setEdErr] = useState(null);
   const [confirmClose, setConfirmClose] = useState(false);
+  // Invite a friend
+  const [showFriendPicker, setShowFriendPicker] = useState(false);
+  const [friendList, setFriendList] = useState([]);
+  const [invitingId, setInvitingId] = useState(null);
+  const [inviteFriendErr, setInviteFriendErr] = useState(null);
+
+  async function openFriendPicker() {
+    setShowFriendPicker(true); setInviteFriendErr(null);
+    try {
+      const fr = await DB.fetchMyFriends();
+      setFriendList(fr.filter(f => f.status === "accepted"));
+    } catch (e) { setInviteFriendErr(e.message); }
+  }
+  async function inviteFriend(friendId) {
+    setInvitingId(friendId); setInviteFriendErr(null);
+    try {
+      await DB.inviteFriendToGroup(group.id, friendId);
+      await load(); onChanged && onChanged();
+      setFriendList(list => list.filter(f => f.other_id !== friendId));
+    } catch (e) { setInviteFriendErr(e.message); }
+    finally { setInvitingId(null); }
+  }
 
   function openEdit() {
     setEdName(g.name); setEdCat(g.category);
@@ -2089,6 +2111,34 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                   if (navigator.share) { try { await navigator.share({ title:`Join ${g.name} on Sanduq`, text, url:link }); } catch {} }
                   else { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),1500); }
                 }} style={{ width:"100%", padding:12, borderRadius:12, background:group.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:"#070B14", cursor:"pointer" }}>Share invite</button>
+
+                {isTreasurer && (
+                  <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+                    {!showFriendPicker ? (
+                      <button onClick={openFriendPicker} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:12, borderRadius:12, background:C.surface2, border:`1px solid ${C.border2}`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text, cursor:"pointer" }}>
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={C.text} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+                        Add a friend directly
+                      </button>
+                    ) : (
+                      <div>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginBottom:8 }}>Tap a friend to add them to this Sanduq.</div>
+                        {friendList.length === 0 ? (
+                          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textDim, textAlign:"center", padding:"10px 0" }}>No friends to add yet. Connect with friends on your Profile first.</div>
+                        ) : (
+                          friendList.map(f => (
+                            <div key={f.other_id} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0" }}>
+                              <div style={{ width:36, height:36, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#070B14" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
+                              <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.display_name}</div>
+                              <button onClick={()=>inviteFriend(f.other_id)} disabled={invitingId===f.other_id} style={{ padding:"7px 14px", borderRadius:9, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer", opacity:invitingId===f.other_id?0.5:1 }}>{invitingId===f.other_id?"Adding…":"Add"}</button>
+                            </div>
+                          ))
+                        )}
+                        {inviteFriendErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:6 }}>{inviteFriendErr}</div>}
+                        <button onClick={()=>setShowFriendPicker(false)} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, background:"none", border:"none", cursor:"pointer" }}>Done</button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </>
             );
           })()}
