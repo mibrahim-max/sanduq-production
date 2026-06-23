@@ -179,8 +179,10 @@ export async function updatePaymentHandles(handles: PaymentHandle[]): Promise<vo
   const s = await currentSession();
   if (!s) throw new Error("Not signed in");
   const clean = handles.filter(h => h.app && h.handle.trim());
+  // Profile row already exists (created at signup), so update — avoids the
+  // not-null insert path that upsert can trip on.
   const { error } = await sb().from("profiles")
-    .upsert({ id: s.user.id, payment_handles: clean }, { onConflict: "id" });
+    .update({ payment_handles: clean }).eq("id", s.user.id);
   if (error) throw new Error(error.message);
 }
 
