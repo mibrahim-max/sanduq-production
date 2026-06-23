@@ -1830,6 +1830,44 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const [err, setErr] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [copied, setCopied] = useState(false);
+  // Edit + close
+  const [editing, setEditing] = useState(false);
+  const [edName, setEdName] = useState("");
+  const [edCat, setEdCat] = useState("Other");
+  const [edGoal, setEdGoal] = useState("");
+  const [edMonthly, setEdMonthly] = useState("");
+  const [edBusy, setEdBusy] = useState(false);
+  const [edErr, setEdErr] = useState(null);
+  const [confirmClose, setConfirmClose] = useState(false);
+
+  function openEdit() {
+    setEdName(g.name); setEdCat(g.category);
+    setEdGoal(String(g.goal_cents/100)); setEdMonthly(String(g.monthly_cents/100));
+    setEdErr(null); setEditing(true);
+  }
+  async function saveMeta() {
+    setEdBusy(true); setEdErr(null);
+    try {
+      await DB.editGroupMeta(group.id, edName.trim(), edCat);
+      const memberCount = detail.members.filter(m=>!m.removed).length;
+      // Only attempt terms update if solo-ish (server enforces < 3 too)
+      if (memberCount < 3) {
+        const goalC = Math.round(parseFloat(edGoal)*100);
+        const monC = Math.round(parseFloat(edMonthly)*100);
+        if (goalC && monC && (goalC !== g.goal_cents || monC !== g.monthly_cents)) {
+          await DB.editGroupTerms(group.id, goalC, monC);
+        }
+      }
+      await load(); onChanged && onChanged();
+      setEditing(false);
+    } catch (e) { setEdErr(e.message); }
+    finally { setEdBusy(false); }
+  }
+  async function doClose() {
+    setEdBusy(true); setEdErr(null);
+    try { await DB.closeGroup(group.id); onChanged && onChanged(); onBack(); }
+    catch (e) { setEdErr(e.message); setEdBusy(false); }
+  }
 
   async function load() {
     try { setDetail(await DB.fetchGroupDetail(group.id)); }
@@ -1872,12 +1910,83 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         <button onClick={onBack} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"7px 14px 7px 10px", color:C.textMid, fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, marginBottom:16 }}>← Home</button>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <div style={{ fontSize:30 }}>{group.emoji}</div>
-          <div>
+          <div style={{ flex:1 }}>
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:800, color:C.text, letterSpacing:-0.5 }}>{group.name}</div>
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2 }}>Live · started {group.started} · {detail ? detail.members.filter(m=>!m.removed).length : "…"} members</div>
           </div>
+          {isTreasurer && (
+            <button onClick={openEdit} title="Edit Sanduq" style={{ width:40, height:40, borderRadius:"50%", background:"rgba(255,255,255,.08)", border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+            </button>
+          )}
         </div>
       </div>
+
+      {editing && (() => {
+        const memberCount = detail ? detail.members.filter(m=>!m.removed).length : 0;
+        const canEditTerms = memberCount < 3;
+        return (
+        <div onClick={()=>!edBusy&&setEditing(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"22px 20px 32px", width:"100%", maxWidth:440, maxHeight:"88vh", overflowY:"auto", border:`1px solid ${C.border}` }}>
+            <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 18px" }} />
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:19, fontWeight:800, color:C.text, marginBottom:18 }}>Edit Sanduq</div>
+
+            <label style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid }}>Name</label>
+            <input value={edName} onChange={e=>setEdName(e.target.value)} style={{ width:"100%", marginTop:6, marginBottom:14, background:C.surface2, border:`1px solid ${C.border}`, borderRadius:11, padding:"12px 14px", fontFamily:"'DM Sans',sans-serif", fontSize:15, color:C.text }} />
+
+            <label style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid }}>Category</label>
+            <div style={{ display:"flex", gap:7, flexWrap:"wrap", marginTop:6, marginBottom:16 }}>
+              {["Travel","Events","Gifts","Housing","Other"].map(c => (
+                <button key={c} onClick={()=>setEdCat(c)} style={{ padding:"8px 14px", borderRadius:18, background:edCat===c?C.blue:C.surface2, border:`1px solid ${edCat===c?C.blue:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:edCat===c?"#fff":C.textMid, cursor:"pointer" }}>{c}</button>
+              ))}
+            </div>
+
+            <div style={{ borderTop:`1px solid ${C.border}`, paddingTop:16, marginBottom:4 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6 }}>
+                <label style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid }}>Financial terms</label>
+                {!canEditTerms && <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.amber }}>Needs a vote ({memberCount} members)</span>}
+              </div>
+              {canEditTerms ? (
+                <div style={{ display:"flex", gap:10 }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textDim, marginBottom:4 }}>Goal ($)</div>
+                    <input value={edGoal} onChange={e=>setEdGoal(e.target.value)} inputMode="decimal" style={{ width:"100%", background:C.surface2, border:`1px solid ${C.border}`, borderRadius:11, padding:"12px 14px", fontFamily:"'DM Mono',monospace", fontSize:15, color:C.text }} />
+                  </div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textDim, marginBottom:4 }}>Monthly ($)</div>
+                    <input value={edMonthly} onChange={e=>setEdMonthly(e.target.value)} inputMode="decimal" style={{ width:"100%", background:C.surface2, border:`1px solid ${C.border}`, borderRadius:11, padding:"12px 14px", fontFamily:"'DM Mono',monospace", fontSize:15, color:C.text }} />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, lineHeight:1.5, background:C.surface2, borderRadius:11, padding:"12px 14px" }}>
+                  Goal ${(g.goal_cents/100).toLocaleString()} · ${(g.monthly_cents/100).toLocaleString()}/mo. With 3+ members, changing these affects everyone's obligations, so it goes through a group vote in the Votes tab.
+                </div>
+              )}
+            </div>
+
+            {edErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.red, marginTop:12 }}>{edErr}</div>}
+
+            <button onClick={saveMeta} disabled={edBusy||!edName.trim()} style={{ width:"100%", marginTop:18, padding:14, borderRadius:13, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, color:"#fff", cursor:"pointer", opacity:(edBusy||!edName.trim())?0.5:1 }}>{edBusy?"Saving…":"Save changes"}</button>
+
+            <div style={{ borderTop:`1px solid ${C.border}`, marginTop:22, paddingTop:18 }}>
+              {!confirmClose ? (
+                <button onClick={()=>setConfirmClose(true)} style={{ width:"100%", padding:13, borderRadius:13, background:"none", border:`1px solid ${C.red}55`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.red, cursor:"pointer" }}>Close this Sanduq</button>
+              ) : (
+                <div style={{ background:C.redLt, border:`1px solid ${C.red}44`, borderRadius:13, padding:16 }}>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.text, lineHeight:1.5, marginBottom:12 }}>
+                    Closing archives this Sanduq. Members can no longer pay or vote, but every record and the full history is preserved — nothing is deleted. This can't be undone from here.
+                  </div>
+                  <div style={{ display:"flex", gap:10 }}>
+                    <button onClick={()=>setConfirmClose(false)} disabled={edBusy} style={{ flex:1, padding:12, borderRadius:11, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Keep it</button>
+                    <button onClick={doClose} disabled={edBusy} style={{ flex:1, padding:12, borderRadius:11, background:C.red, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer" }}>{edBusy?"Closing…":"Close Sanduq"}</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        );
+      })()}
 
       <div style={{ padding:16 }}>
         {err && (
@@ -2020,6 +2129,32 @@ export default function App() {
   const [nameDraft, setNameDraft] = useState("");
   const [savingName, setSavingName] = useState(false);
   const [nameErr, setNameErr] = useState(null);
+  // Payment handles
+  const [handles, setHandles] = useState([]);
+  const [handleApp, setHandleApp] = useState("Venmo");
+  const [handleVal, setHandleVal] = useState("");
+  const [handleBusy, setHandleBusy] = useState(false);
+  const [handleErr, setHandleErr] = useState(null);
+  const [addingHandle, setAddingHandle] = useState(false);
+
+  async function saveHandles(next) {
+    setHandleBusy(true); setHandleErr(null);
+    try {
+      if (LIVE) await DB.updatePaymentHandles(next);
+      setHandles(next);
+      setAddingHandle(false); setHandleVal("");
+    } catch (e) { setHandleErr(e.message); }
+    finally { setHandleBusy(false); }
+  }
+  function addHandle() {
+    const v = handleVal.trim();
+    if (!v) return;
+    const next = [...handles.filter(h => h.app !== handleApp), { app: handleApp, handle: v }];
+    saveHandles(next);
+  }
+  function removeHandle(app) {
+    saveHandles(handles.filter(h => h.app !== app));
+  }
 
   async function saveName() {
     const n = nameDraft.trim();
@@ -2053,7 +2188,7 @@ export default function App() {
       DB.fetchMyGroups(), DB.fetchContribRows(), DB.currentUserId(), DB.fetchMyProfile(),
     ]);
     setMyId(uid);
-    if (profile) setMe(makeIdentity(profile.display_name, profile.avatar_color));
+    if (profile) { setMe(makeIdentity(profile.display_name, profile.avatar_color)); setHandles(profile.payment_handles || []); }
     setSanduqs(rows.map((r, i) => mapLiveGroup(r, contribs, uid, i)));
   }
 
@@ -2629,23 +2764,41 @@ export default function App() {
             <SurfaceCard>
               <Eyebrow>Your payment handles</Eyebrow>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim, marginBottom:10 }}>Shown to your group when you're the treasurer collecting funds.</div>
-              {[].map((m,i,arr) => (
+              {handles.map((m,i,arr) => (
                 <div key={m.app}>
                   <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 0" }}>
-                    <div style={{ width:40, height:40, borderRadius:12, background:C.surface2, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, color:m.dot }}>●</div>
+                    <div style={{ width:40, height:40, borderRadius:12, background:C.surface2, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18 }}>{m.app==="Venmo"?"🅥":m.app==="Cash App"?"💵":m.app==="Zelle"?"⚡":"💳"}</div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{m.app}</div>
                       <div style={{ fontFamily:"'DM Mono',monospace", fontSize:12, color:C.textMid, marginTop:1 }}>{m.handle}</div>
                     </div>
-                    <button style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.blue, background:"none", border:"none", cursor:"pointer", fontWeight:600 }}>Edit</button>
+                    <button onClick={()=>removeHandle(m.app)} disabled={handleBusy} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, background:"none", border:"none", cursor:"pointer", fontWeight:600 }}>Remove</button>
                   </div>
                   {i<arr.length-1 && <Divider />}
                 </div>
               ))}
-              <button style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 0", marginTop:4, background:"none", border:"none", cursor:"pointer", borderTop:`1px dashed ${C.border}` }}>
-                <div style={{ width:40, height:40, borderRadius:12, background:C.surface2, border:`1.5px dashed ${C.border2}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, color:C.textDim }}>+</div>
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.blue }}>Add a payment handle</div>
-              </button>
+
+              {addingHandle ? (
+                <div style={{ marginTop:12, paddingTop:12, borderTop:`1px dashed ${C.border}` }}>
+                  <div style={{ display:"flex", gap:6, marginBottom:8, flexWrap:"wrap" }}>
+                    {["Venmo","Cash App","Zelle","PayPal"].map(a => (
+                      <button key={a} onClick={()=>setHandleApp(a)} style={{ padding:"7px 12px", borderRadius:9, background:handleApp===a?C.blue:C.surface2, border:`1px solid ${handleApp===a?C.blue:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:handleApp===a?"#fff":C.textMid, cursor:"pointer" }}>{a}</button>
+                    ))}
+                  </div>
+                  <div style={{ display:"flex", gap:8 }}>
+                    <input autoFocus value={handleVal} onChange={e=>setHandleVal(e.target.value)} placeholder={handleApp==="Venmo"?"@your-venmo":handleApp==="Cash App"?"$yourcashtag":handleApp==="Zelle"?"email or phone":"your-handle"}
+                      style={{ flex:1, background:C.surface2, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Mono',monospace", fontSize:14, color:C.text }} />
+                    <button onClick={addHandle} disabled={!handleVal.trim()||handleBusy} style={{ padding:"0 16px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", opacity:(!handleVal.trim()||handleBusy)?0.5:1 }}>{handleBusy?"…":"Save"}</button>
+                  </div>
+                  <button onClick={()=>{ setAddingHandle(false); setHandleVal(""); setHandleErr(null); }} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, background:"none", border:"none", cursor:"pointer" }}>Cancel</button>
+                </div>
+              ) : (
+                <button onClick={()=>{ setAddingHandle(true); setHandleApp(handles.some(h=>h.app==="Venmo")?"Cash App":"Venmo"); }} style={{ display:"flex", alignItems:"center", gap:10, width:"100%", padding:"12px 0", marginTop:4, background:"none", border:"none", cursor:"pointer", borderTop:handles.length?`1px dashed ${C.border}`:"none" }}>
+                  <div style={{ width:40, height:40, borderRadius:12, background:C.surface2, border:`1.5px dashed ${C.border2}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, color:C.textDim }}>+</div>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.blue }}>Add a payment handle</div>
+                </button>
+              )}
+              {handleErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:8 }}>{handleErr}</div>}
             </SurfaceCard>
 
             {/* Notification channel — hidden until notifications are wired */}
