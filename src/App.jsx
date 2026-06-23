@@ -1850,6 +1850,33 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const [expAmt, setExpAmt] = useState("");
   const [expBusy, setExpBusy] = useState(false);
   const [expErr, setExpErr] = useState(null);
+  // Votes
+  const [showPropose, setShowPropose] = useState(false);
+  const [voteKind, setVoteKind] = useState("monthly");
+  const [voteVal, setVoteVal] = useState("");
+  const [voteBusy, setVoteBusy] = useState(false);
+  const [voteErr, setVoteErr] = useState(null);
+  const [ballotBusy, setBallotBusy] = useState(null);
+
+  async function propose() {
+    const cents = Math.round(parseFloat(voteVal) * 100);
+    if (!cents || cents <= 0 || voteBusy) return;
+    setVoteBusy(true); setVoteErr(null);
+    try {
+      await DB.proposeAmendment(group.id, voteKind, cents);
+      await load(); onChanged && onChanged();
+      setShowPropose(false); setVoteVal("");
+    } catch (e) { setVoteErr(e.message); }
+    finally { setVoteBusy(false); }
+  }
+  async function castBallot(voteId, choice) {
+    setBallotBusy(voteId); setVoteErr(null);
+    try {
+      await DB.rpc.castBallot(voteId, choice);
+      await load(); onChanged && onChanged();
+    } catch (e) { setVoteErr(e.message); }
+    finally { setBallotBusy(null); }
+  }
 
   async function logExpense() {
     const cents = Math.round(parseFloat(expAmt) * 100);
@@ -2166,6 +2193,66 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                   {i<arr.length-1 && <Divider />}
                 </div>
               ))}
+            </div>
+          )}
+        </SurfaceCard>
+
+        {/* Votes */}
+        <SurfaceCard>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <Eyebrow>Votes</Eyebrow>
+            {!showPropose && <button onClick={()=>setShowPropose(true)} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.blue, background:"none", border:"none", cursor:"pointer" }}>+ Propose</button>}
+          </div>
+
+          {showPropose && (
+            <div style={{ marginTop:10, marginBottom:10, padding:14, background:C.surface2, borderRadius:12, border:`1px solid ${C.border}` }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginBottom:8 }}>Propose a change. It passes when a majority of members vote yes.</div>
+              <div style={{ display:"flex", gap:7, marginBottom:10 }}>
+                {[["monthly","Monthly amount"],["goal","Goal"]].map(([k,lbl]) => (
+                  <button key={k} onClick={()=>setVoteKind(k)} style={{ flex:1, padding:"9px 0", borderRadius:9, background:voteKind===k?C.blue:C.surface, border:`1px solid ${voteKind===k?C.blue:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:voteKind===k?"#fff":C.textMid, cursor:"pointer" }}>{lbl}</button>
+                ))}
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                <input value={voteVal} onChange={e=>setVoteVal(e.target.value)} inputMode="decimal" placeholder={voteKind==="monthly"?`New monthly $ (now $${(g.monthly_cents/100).toLocaleString()})`:`New goal $ (now $${(g.goal_cents/100).toLocaleString()})`} style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Mono',monospace", fontSize:14, color:C.text }} />
+                <button onClick={propose} disabled={!voteVal||voteBusy} style={{ padding:"0 16px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", opacity:(!voteVal||voteBusy)?0.5:1 }}>{voteBusy?"…":"Propose"}</button>
+              </div>
+              {voteErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:8 }}>{voteErr}</div>}
+              <button onClick={()=>{ setShowPropose(false); setVoteVal(""); setVoteErr(null); }} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, background:"none", border:"none", cursor:"pointer" }}>Cancel</button>
+            </div>
+          )}
+
+          {detail.votes.length === 0 && !showPropose ? (
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textDim, padding:"10px 0", textAlign:"center" }}>No votes yet. Propose a change to the monthly amount or goal.</div>
+          ) : (
+            <div style={{ marginTop:8 }}>
+              {detail.votes.map((v, i, arr) => {
+                const ballots = v.ballots || [];
+                const yes = ballots.filter(b=>b.choice==="yes").length;
+                const no = ballots.filter(b=>b.choice==="no").length;
+                const needed = Math.floor(detail.members.filter(m=>!m.removed).length/2)+1;
+                const iVoted = ballots.some(b=>b.member_id===myId);
+                const open = v.status==="open";
+                return (
+                  <div key={v.id}>
+                    <div style={{ padding:"12px 0" }}>
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10 }}>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{v.title}</div>
+                        <Pill label={v.status==="executed"?"Passed":v.status==="open"?"Open":v.status==="failed"?"Failed":v.status} color={v.status==="executed"?C.green:v.status==="open"?C.blue:C.textMid} bg={v.status==="executed"?C.greenLt:v.status==="open"?C.blueLt:C.surface2} />
+                      </div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:4 }}>{yes} yes · {no} no · {needed} needed to pass</div>
+                      {open && !iVoted && (
+                        <div style={{ display:"flex", gap:8, marginTop:10 }}>
+                          <button onClick={()=>castBallot(v.id,"yes")} disabled={ballotBusy===v.id} style={{ flex:1, padding:10, borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#070B14", cursor:"pointer" }}>Yes</button>
+                          <button onClick={()=>castBallot(v.id,"no")} disabled={ballotBusy===v.id} style={{ flex:1, padding:10, borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.text, cursor:"pointer" }}>No</button>
+                          <button onClick={()=>castBallot(v.id,"abstain")} disabled={ballotBusy===v.id} style={{ padding:"10px 14px", borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Abstain</button>
+                        </div>
+                      )}
+                      {open && iVoted && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.green, marginTop:8 }}>✓ You voted</div>}
+                    </div>
+                    {i<arr.length-1 && <Divider />}
+                  </div>
+                );
+              })}
             </div>
           )}
         </SurfaceCard>
