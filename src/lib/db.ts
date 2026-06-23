@@ -136,6 +136,83 @@ export async function proposeAmendment(groupId: string, kind: "monthly" | "goal"
   if (error) throw new Error(error.message);
 }
 
+// ── Calendar: aggregate events across all my groups ──────────
+export interface CalEvent {
+  id: string; kind: "due" | "vote" | "milestone" | "paid";
+  date: string; // ISO
+  groupId: string; groupName: string;
+  title: string; subtitle?: string;
+}
+export async function fetchCalendar(): Promise<CalEvent[]> {
+  const s = sb();
+  const groups = await fetchMyGroups();
+  if (groups.length === 0) return [];
+  const ids = groups.map(g => g.id);
+  const byId: Record<string, GroupRow> = {};
+  groups.forEach(g => { byId[g.id] = g; });
+
+  const [contribs, votes] = await Promise.all([
+    s.from("contributions").select("group_id, cycle, status, amount_cents, confirmed_at").in("group_id", ids),
+    s.from("votes").select("id, group_id, title, status, closes_at").in("group_id", ids),
+  ]);
+  if (contribs.error) throw new Error(contribs.error.message);
+  if (votes.error) throw new Error(votes.error.message);
+
+  const events: CalEvent[] = [];
+  const now = new Date();
+
+  // Due dates: the next unpaid cycle per group (1st of the month).
+  for (const g of groups) {
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    events.push({
+      id: `due-${g.id}`, kind: "due", date: next.toISOString(),
+      groupId: g.id, groupName: g.name,
+      title: `${g.name} contribution due`, subtitle: `$${(g.monthly_cents/100).toLocaleString()}`,
+    });
+  }
+
+  // Confirmed payments (history).
+  for (const c of (contribs.data ?? [])) {
+    if (c.status === "confirmed" && c.confirmed_at) {
+      const g = byId[c.group_id];
+      events.push({
+        id: `paid-${c.group_id}-${c.cycle}`, kind: "paid", date: c.confirmed_at,
+        groupId: c.group_id, groupName: g?.name ?? "",
+        title: `Payment confirmed`, subtitle: `${g?.name ?? ""} · $${(c.amount_cents/100).toLocaleString()}`,
+      });
+    }
+  }
+
+  // Open votes (closing dates).
+  for (const v of (votes.data ?? [])) {
+    if (v.status === "open" && v.closes_at) {
+      const g = byId[v.group_id];
+      events.push({
+        id: `vote-${v.id}`, kind: "vote", date: v.closes_at,
+        groupId: v.group_id, groupName: g?.name ?? "",
+        title: v.title, subtitle: `${g?.name ?? ""} · vote closes`,
+      });
+    }
+  }
+
+  // Goal milestones: estimate when each group hits its goal at current pace.
+  for (const g of groups) {
+    const confirmed = (contribs.data ?? []).filter(c => c.group_id === g.id && c.status === "confirmed");
+    const saved = confirmed.reduce((a, c) => a + c.amount_cents, 0);
+    if (saved < g.goal_cents && g.monthly_cents > 0) {
+      const monthsLeft = Math.ceil((g.goal_cents - saved) / g.monthly_cents);
+      const eta = new Date(now.getFullYear(), now.getMonth() + monthsLeft, 1);
+      events.push({
+        id: `milestone-${g.id}`, kind: "milestone", date: eta.toISOString(),
+        groupId: g.id, groupName: g.name,
+        title: `${g.name} goal reached`, subtitle: `Est. at $${(g.goal_cents/100).toLocaleString()}`,
+      });
+    }
+  }
+
+  return events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
 export async function joinGroup(groupId: string): Promise<void> {
   const { error } = await sb().rpc("rpc_join_group", { p_group: groupId });
   if (error) throw new Error(error.message);
