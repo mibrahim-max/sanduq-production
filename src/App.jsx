@@ -1844,6 +1844,24 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const [friendList, setFriendList] = useState([]);
   const [invitingId, setInvitingId] = useState(null);
   const [inviteFriendErr, setInviteFriendErr] = useState(null);
+  // Expenses
+  const [showExpense, setShowExpense] = useState(false);
+  const [expDesc, setExpDesc] = useState("");
+  const [expAmt, setExpAmt] = useState("");
+  const [expBusy, setExpBusy] = useState(false);
+  const [expErr, setExpErr] = useState(null);
+
+  async function logExpense() {
+    const cents = Math.round(parseFloat(expAmt) * 100);
+    if (!expDesc.trim() || !cents || cents <= 0 || expBusy) return;
+    setExpBusy(true); setExpErr(null);
+    try {
+      await DB.logExpense(group.id, expDesc.trim(), cents);
+      await load(); onChanged && onChanged();
+      setShowExpense(false); setExpDesc(""); setExpAmt("");
+    } catch (e) { setExpErr(e.message); }
+    finally { setExpBusy(false); }
+  }
 
   async function openFriendPicker() {
     setShowFriendPicker(true); setInviteFriendErr(null);
@@ -2087,6 +2105,68 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
           })}
           {isTreasurer && missingRows > 0 && (
             <button onClick={()=>act(()=>DB.openCycle(group.id), "cycle")} style={{ width:"100%", marginTop:10, padding:12, borderRadius:12, background:C.surface2, border:`1px solid ${C.border2}`, fontSize:13, fontWeight:600, color:C.text }}>Open this month's cycle for {missingRows} member{missingRows>1?"s":""}</button>
+          )}
+        </SurfaceCard>
+
+        {/* Members */}
+        <SurfaceCard>
+          <Eyebrow>Members · {detail.members.filter(m=>!m.removed).length}</Eyebrow>
+          <div style={{ marginTop:8 }}>
+            {detail.members.filter(m=>!m.removed).map((m, i, arr) => {
+              const prof = m.profiles || {};
+              const isMe = m.member_id === myId;
+              const isTreas = m.member_id === g.treasurer_id;
+              return (
+                <div key={m.member_id}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0" }}>
+                    <div style={{ width:38, height:38, borderRadius:"50%", background:prof.avatar_color||C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#070B14" }}>{(prof.display_name||"?").slice(0,2).toUpperCase()}</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{prof.display_name||"Member"}{isMe?" (you)":""}</div>
+                      {m.catchup_owed_cents > 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.amber, marginTop:1 }}>Catch-up owed: ${(m.catchup_owed_cents/100).toLocaleString()}</div>}
+                    </div>
+                    {isTreas && <Pill label="Treasurer" color={C.blue} bg={C.blueLt} />}
+                    {m.misses > 0 && <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.red }}>{m.misses} miss{m.misses>1?"es":""}</span>}
+                  </div>
+                  {i<arr.length-1 && <Divider />}
+                </div>
+              );
+            })}
+          </div>
+        </SurfaceCard>
+
+        {/* Expenses */}
+        <SurfaceCard>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <Eyebrow>Expenses</Eyebrow>
+            {isTreasurer && !showExpense && <button onClick={()=>setShowExpense(true)} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.blue, background:"none", border:"none", cursor:"pointer" }}>+ Log expense</button>}
+          </div>
+
+          {showExpense && (
+            <div style={{ marginTop:10, marginBottom:8, padding:14, background:C.surface2, borderRadius:12, border:`1px solid ${C.border}` }}>
+              <input value={expDesc} onChange={e=>setExpDesc(e.target.value)} placeholder="What was it for?" style={{ width:"100%", marginBottom:8, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text }} />
+              <div style={{ display:"flex", gap:8 }}>
+                <input value={expAmt} onChange={e=>setExpAmt(e.target.value)} inputMode="decimal" placeholder="Amount $" style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Mono',monospace", fontSize:14, color:C.text }} />
+                <button onClick={logExpense} disabled={!expDesc.trim()||!expAmt||expBusy} style={{ padding:"0 16px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", opacity:(!expDesc.trim()||!expAmt||expBusy)?0.5:1 }}>{expBusy?"…":"Log"}</button>
+              </div>
+              {expErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:8 }}>{expErr}</div>}
+              <button onClick={()=>{ setShowExpense(false); setExpDesc(""); setExpAmt(""); setExpErr(null); }} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, background:"none", border:"none", cursor:"pointer" }}>Cancel</button>
+            </div>
+          )}
+
+          {detail.expenses.length === 0 ? (
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textDim, padding:"10px 0", textAlign:"center" }}>No expenses logged yet.</div>
+          ) : (
+            <div style={{ marginTop:8 }}>
+              {detail.expenses.map((ex, i, arr) => (
+                <div key={ex.id}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0" }}>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text }}>{ex.description}</div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, fontWeight:500, color:C.text }}>${(ex.amount_cents/100).toLocaleString()}</div>
+                  </div>
+                  {i<arr.length-1 && <Divider />}
+                </div>
+              ))}
+            </div>
           )}
         </SurfaceCard>
 
