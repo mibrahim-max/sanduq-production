@@ -54,7 +54,10 @@ export async function fetchMyGroups(): Promise<GroupRow[]> {
     .select("groups(*)")
     .eq("removed", false);
   if (error) throw new Error(error.message);
-  return (data ?? []).map((r: any) => r.groups).filter(Boolean);
+  return (data ?? [])
+    .map((r: any) => r.groups)
+    .filter(Boolean)
+    .filter((g: any) => g.status !== "archived");
 }
 
 export async function createGroup(input: {
@@ -68,6 +71,19 @@ export async function createGroup(input: {
   });
   if (error) throw new Error(error.message);
   return data as string;
+}
+
+export async function editGroupMeta(groupId: string, name: string, category: string): Promise<void> {
+  const { error } = await sb().rpc("rpc_edit_group_meta", { p_group: groupId, p_name: name, p_category: category });
+  if (error) throw new Error(error.message);
+}
+export async function editGroupTerms(groupId: string, goalCents: number, monthlyCents: number): Promise<void> {
+  const { error } = await sb().rpc("rpc_edit_group_terms", { p_group: groupId, p_goal_cents: goalCents, p_monthly_cents: monthlyCents });
+  if (error) throw new Error(error.message);
+}
+export async function closeGroup(groupId: string): Promise<void> {
+  const { error } = await sb().rpc("rpc_close_group", { p_group: groupId });
+  if (error) throw new Error(error.message);
 }
 
 export async function joinGroup(groupId: string): Promise<void> {
@@ -140,14 +156,32 @@ export async function currentUserId(): Promise<string | null> {
   return s?.user.id ?? null;
 }
 
-export interface MyProfile { id: string; display_name: string; avatar_color: string; }
+export interface PaymentHandle { app: string; handle: string; }
+export interface MyProfile { id: string; display_name: string; avatar_color: string; payment_handles: PaymentHandle[]; }
 export async function fetchMyProfile(): Promise<MyProfile | null> {
   const s = await currentSession();
   if (!s) return null;
   const { data, error } = await sb().from("profiles")
-    .select("id, display_name, avatar_color").eq("id", s.user.id).single();
-  if (error) return { id: s.user.id, display_name: "Member", avatar_color: "#3B8EF5" };
-  return data as MyProfile;
+    .select("id, display_name, avatar_color, payment_handles").eq("id", s.user.id).single();
+  if (error) return { id: s.user.id, display_name: "Member", avatar_color: "#3B8EF5", payment_handles: [] };
+  return { ...data, payment_handles: normalizeHandles((data as any).payment_handles) } as MyProfile;
+}
+
+// payment_handles is stored as jsonb; accept either an array or a {app:handle} object.
+function normalizeHandles(raw: any): PaymentHandle[] {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(h => h && h.app && h.handle);
+  if (typeof raw === "object") return Object.entries(raw).map(([app, handle]) => ({ app, handle: String(handle) }));
+  return [];
+}
+
+export async function updatePaymentHandles(handles: PaymentHandle[]): Promise<void> {
+  const s = await currentSession();
+  if (!s) throw new Error("Not signed in");
+  const clean = handles.filter(h => h.app && h.handle.trim());
+  const { error } = await sb().from("profiles")
+    .upsert({ id: s.user.id, payment_handles: clean }, { onConflict: "id" });
+  if (error) throw new Error(error.message);
 }
 
 /** All contribution rows visible to me (mine + my groups'), for home-card pots and statuses. */
