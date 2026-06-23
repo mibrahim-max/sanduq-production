@@ -86,6 +86,42 @@ export async function closeGroup(groupId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// ── Friends ──────────────────────────────────────────────────
+export interface Friend { friendship_id: string; other_id: string; display_name: string; avatar_color: string; status: string; direction: string; }
+export async function fetchMyFriends(): Promise<Friend[]> {
+  const { data, error } = await sb().rpc("rpc_my_friends");
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Friend[];
+}
+export async function fetchMyFriendCode(): Promise<string | null> {
+  const s = await currentSession();
+  if (!s) return null;
+  const { data } = await sb().from("profiles").select("friend_code").eq("id", s.user.id).single();
+  return (data as any)?.friend_code ?? null;
+}
+export async function findByCode(code: string): Promise<{ id: string; display_name: string; avatar_color: string } | null> {
+  const { data, error } = await sb().rpc("rpc_find_by_code", { p_code: code });
+  if (error || !data || data.length === 0) return null;
+  return data[0];
+}
+export async function sendFriendRequest(code: string): Promise<void> {
+  const { error } = await sb().rpc("rpc_send_friend_request", { p_code: code });
+  if (error) throw new Error(error.message);
+}
+export async function respondFriend(friendshipId: string, accept: boolean): Promise<void> {
+  const { error } = await sb().rpc("rpc_respond_friend", { p_friendship: friendshipId, p_accept: accept });
+  if (error) throw new Error(error.message);
+}
+export async function inviteFriendToGroup(groupId: string, friendId: string): Promise<void> {
+  const { error } = await sb().rpc("rpc_invite_friend_to_group", { p_group: groupId, p_friend: friendId });
+  if (error) throw new Error(error.message);
+}
+export async function sharedGroups(friendId: string): Promise<{ id: string; name: string }[]> {
+  const { data, error } = await sb().rpc("rpc_shared_groups", { p_friend: friendId });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as { id: string; name: string }[];
+}
+
 export async function joinGroup(groupId: string): Promise<void> {
   const { error } = await sb().rpc("rpc_join_group", { p_group: groupId });
   if (error) throw new Error(error.message);
