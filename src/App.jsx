@@ -1988,7 +1988,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
 
   return (
     <div style={{ minHeight:"100vh", background:C.bg, paddingBottom:40 }}>
-      <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}`}</style>
+      <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}.tab-scroll::-webkit-scrollbar{display:none}.tab-scroll{scrollbar-width:none;-ms-overflow-style:none}`}</style>
 
       {/* Gradient cover header */}
       <div style={{ position:"relative", background:`linear-gradient(155deg, ${catColor[0]}, ${catColor[1]})`, padding:"52px 20px 70px", overflow:"hidden" }}>
@@ -2024,7 +2024,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
       )}
 
       {/* Tab bar */}
-      <div style={{ display:"flex", gap:4, padding:"18px 12px 0", overflowX:"auto", borderBottom:`1px solid ${C.border}` }}>
+      <div className="tab-scroll" style={{ display:"flex", gap:4, padding:"14px 12px 0", overflowX:"auto", overflowY:"hidden", borderBottom:`1px solid ${C.border}`, position:"sticky", top:0, zIndex:20, background:C.bg, WebkitOverflowScrolling:"touch" }}>
         {[["overview","Overview"],["payments","Payments"],["votes","Votes"],["members","Members"],["chat","Chat"]].map(([k,lbl]) => (
           <button key={k} onClick={()=>setTab(k)} style={{ position:"relative", padding:"10px 16px 14px", background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:tab===k?700:500, color:tab===k?C.blue:C.textMid }}>
             {lbl}
