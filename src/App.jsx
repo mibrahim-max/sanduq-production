@@ -2136,6 +2136,40 @@ export default function App() {
   const [handleBusy, setHandleBusy] = useState(false);
   const [handleErr, setHandleErr] = useState(null);
   const [addingHandle, setAddingHandle] = useState(false);
+  // Friends
+  const [friends, setFriends] = useState([]);
+  const [myCode, setMyCode] = useState(null);
+  const [friendCodeInput, setFriendCodeInput] = useState("");
+  const [friendBusy, setFriendBusy] = useState(false);
+  const [friendErr, setFriendErr] = useState(null);
+  const [friendMsg, setFriendMsg] = useState(null);
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  async function loadFriends() {
+    if (!LIVE) return;
+    try {
+      const [fr, code] = await Promise.all([DB.fetchMyFriends(), DB.fetchMyFriendCode()]);
+      setFriends(fr); setMyCode(code);
+    } catch (e) { console.error(e); }
+  }
+  async function addFriend() {
+    const c = friendCodeInput.trim();
+    if (!c || friendBusy) return;
+    setFriendBusy(true); setFriendErr(null); setFriendMsg(null);
+    try {
+      await DB.sendFriendRequest(c);
+      setFriendCodeInput("");
+      setFriendMsg("Request sent!");
+      await loadFriends();
+    } catch (e) { setFriendErr(e.message); }
+    finally { setFriendBusy(false); }
+  }
+  async function respondToFriend(fid, accept) {
+    setFriendBusy(true); setFriendErr(null);
+    try { await DB.respondFriend(fid, accept); await loadFriends(); }
+    catch (e) { setFriendErr(e.message); }
+    finally { setFriendBusy(false); }
+  }
 
   async function saveHandles(next) {
     setHandleBusy(true); setHandleErr(null);
@@ -2189,6 +2223,7 @@ export default function App() {
     ]);
     setMyId(uid);
     if (profile) { setMe(makeIdentity(profile.display_name, profile.avatar_color)); setHandles(profile.payment_handles || []); }
+    try { const fr = await DB.fetchMyFriends(); setFriends(fr); } catch {}
     setSanduqs(rows.map((r, i) => mapLiveGroup(r, contribs, uid, i)));
   }
 
@@ -2237,6 +2272,8 @@ export default function App() {
     })();
   }, []);
 
+  useEffect(() => { if (screen === "profile" && LIVE) loadFriends(); }, [screen]);
+
   async function handleJoin() {
     let code = joinCode.trim();
     // Accept a full invite link or a bare id
@@ -2253,7 +2290,6 @@ export default function App() {
   const [activeDM, setActiveDM] = useState(null);
   const [dmThreads, setDmThreads] = useState(DM_THREADS);
   const [dmDraft, setDmDraft] = useState("");
-  const [friends, setFriends] = useState(FRIENDS);
   const [notifs, setNotifs] = useState(ACTIVITY_FEED);
   const [cat, setCat] = useState("All");
   const [channel, setChannel] = useState("sms");
@@ -2354,7 +2390,7 @@ export default function App() {
 
           {/* Stats row */}
           <div style={{ padding:"0 18px", marginBottom:16, display:"flex", gap:10 }}>
-            {[{label:"Total saved",val:`$${totalSaved.toLocaleString()}`},{label:"Sanduqs",val:String(sanduqs.length)},{label:"Active",val:String(sanduqs.filter(g=>g.status!=="completed").length)}].map(s => (
+            {[{label:"Total saved",val:`$${totalSaved.toLocaleString()}`},{label:"Sanduqs",val:String(sanduqs.length)},{label:"Friends",val:String(friends.filter(f=>f.status==="accepted").length)}].map(s => (
               <div key={s.label} style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"13px 12px" }}>
                 <div style={{ fontSize:11, color:C.textMid, fontWeight:500, marginBottom:8 }}>{s.label}</div>
                 {loading ? <Sk w={48} h={20} /> : <div style={{ fontSize:s.label==="Total saved"?18:20, fontWeight:800, color:C.text, letterSpacing:-0.5, fontFamily:"'DM Mono',monospace" }}>{s.val}</div>}
@@ -2714,51 +2750,67 @@ export default function App() {
             </div>
           </div>
           <div style={{ padding:16 }}>
-            {/* Friends — hidden until wired to real data */}
-            {false && (
+            {/* Friends */}
             <SurfaceCard>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
-                <Eyebrow>Friends · {friends.filter(f=>f.status==="friend").length}</Eyebrow>
-                <button style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.blue, background:"none", border:"none", cursor:"pointer", marginBottom:8 }}>+ Add friend</button>
+              <Eyebrow>Friends</Eyebrow>
+
+              {/* Your friend code to share */}
+              <div style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", marginTop:8, marginBottom:14 }}>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginBottom:8 }}>Your friend code — share it so people can add you.</div>
+                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                  <span style={{ flex:1, fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:600, letterSpacing:3, color:C.text }}>{myCode || "········"}</span>
+                  <button onClick={()=>{ if(myCode){ navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(()=>setCodeCopied(false),1500);} }} style={{ padding:"7px 13px", borderRadius:9, background:codeCopied?C.greenLt:C.surface, border:`1px solid ${codeCopied?C.green:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:codeCopied?C.green:C.textMid, cursor:"pointer" }}>{codeCopied?"Copied ✓":"Copy"}</button>
+                </div>
               </div>
 
-              {/* Pending requests */}
-              {friends.filter(f=>f.status==="request").length>0 && (
-                <div style={{ marginBottom:10 }}>
-                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.amber, marginBottom:8 }}>Friend requests</div>
-                  {friends.filter(f=>f.status==="request").map(f => (
-                    <div key={f.id} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0" }}>
-                      <Avatar m={f} size={38} />
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.name}</div>
-                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim }}>{f.mutual} mutual friends</div>
-                      </div>
-                      <button onClick={()=>setFriends(fs=>fs.map(x=>x.id===f.id?{...x,status:"friend"}:x))} style={{ padding:"8px 14px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer" }}>Accept</button>
-                      <button onClick={()=>setFriends(fs=>fs.filter(x=>x.id!==f.id))} style={{ padding:"8px 12px", borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Decline</button>
+              {/* Add a friend by code */}
+              <div style={{ display:"flex", gap:8, marginBottom:6 }}>
+                <input value={friendCodeInput} onChange={e=>{ setFriendCodeInput(e.target.value.toUpperCase()); setFriendErr(null); setFriendMsg(null); }} placeholder="Enter a friend's code"
+                  style={{ flex:1, background:C.surface2, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Mono',monospace", fontSize:14, letterSpacing:2, color:C.text }} />
+                <button onClick={addFriend} disabled={!friendCodeInput.trim()||friendBusy} style={{ padding:"0 16px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", opacity:(!friendCodeInput.trim()||friendBusy)?0.5:1 }}>{friendBusy?"…":"Add"}</button>
+              </div>
+              {friendErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginBottom:8 }}>{friendErr}</div>}
+              {friendMsg && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.green, marginBottom:8 }}>{friendMsg}</div>}
+
+              {/* Incoming requests */}
+              {friends.filter(f=>f.status==="requested" && f.direction==="incoming").length>0 && (
+                <div style={{ marginTop:12, marginBottom:6 }}>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.amber, marginBottom:6 }}>Friend requests</div>
+                  {friends.filter(f=>f.status==="requested" && f.direction==="incoming").map(f => (
+                    <div key={f.friendship_id} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0" }}>
+                      <div style={{ width:38, height:38, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#070B14" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
+                      <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.display_name}</div>
+                      <button onClick={()=>respondToFriend(f.friendship_id, true)} disabled={friendBusy} style={{ padding:"8px 14px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer" }}>Accept</button>
+                      <button onClick={()=>respondToFriend(f.friendship_id, false)} disabled={friendBusy} style={{ padding:"8px 12px", borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Decline</button>
                     </div>
                   ))}
-                  <Divider />
                 </div>
               )}
 
-              {/* Friend list */}
-              {friends.filter(f=>f.status==="friend").map((f,i,arr) => (
-                <div key={f.id}>
-                  <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0" }}>
-                    <Avatar m={f} size={38} />
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.name}</div>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim }}>{f.mutual} mutual friends</div>
+              {/* Accepted friends */}
+              {friends.filter(f=>f.status==="accepted").length>0 && (
+                <div style={{ marginTop:12 }}>
+                  <Divider />
+                  {friends.filter(f=>f.status==="accepted").map(f => (
+                    <div key={f.friendship_id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0" }}>
+                      <div style={{ width:38, height:38, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#070B14" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
+                      <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.display_name}</div>
                     </div>
-                    <button style={{ width:34, height:34, borderRadius:"50%", background:C.surface2, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round"><path d="M21 11.5a8.38 8.38 0 0 1-9 8.35 8.5 8.5 0 0 1-3.4-.7L3 21l1.85-5.55A8.38 8.38 0 0 1 4 11.5a8.5 8.5 0 0 1 8.5-8.5 8.38 8.38 0 0 1 8.5 8.5Z"/></svg>
-                    </button>
-                  </div>
-                  {i<arr.length-1 && <Divider />}
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {/* Outgoing pending */}
+              {friends.filter(f=>f.status==="requested" && f.direction==="outgoing").length>0 && (
+                <div style={{ marginTop:10, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim }}>
+                  {friends.filter(f=>f.status==="requested" && f.direction==="outgoing").length} pending invite{friends.filter(f=>f.status==="requested" && f.direction==="outgoing").length>1?"s":""} sent
+                </div>
+              )}
+
+              {friends.length===0 && !friendMsg && (
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textDim, marginTop:10, textAlign:"center", padding:"8px 0" }}>No friends yet. Share your code to connect.</div>
+              )}
             </SurfaceCard>
-            )}
 
             {/* Payment handles */}
             <SurfaceCard>
