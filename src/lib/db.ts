@@ -131,6 +131,11 @@ export async function logExpense(groupId: string, description: string, amountCen
   if (error) throw new Error(error.message);
 }
 
+export async function proposeAmendment(groupId: string, kind: "monthly" | "goal", valueCents: number): Promise<void> {
+  const { error } = await sb().rpc("rpc_propose_amendment", { p_group: groupId, p_kind: kind, p_value_cents: valueCents });
+  if (error) throw new Error(error.message);
+}
+
 export async function joinGroup(groupId: string): Promise<void> {
   const { error } = await sb().rpc("rpc_join_group", { p_group: groupId });
   if (error) throw new Error(error.message);
