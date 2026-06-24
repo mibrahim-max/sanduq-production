@@ -3259,13 +3259,9 @@ export default function App() {
             <SurfaceCard>
               <Eyebrow>Friends</Eyebrow>
 
-              {/* Your friend code to share */}
-              <div style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", marginTop:8, marginBottom:14 }}>
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginBottom:8 }}>Your friend code — share it so people can add you.</div>
-                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                  <span style={{ flex:1, fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:600, letterSpacing:3, color:C.text }}>{myCode || "········"}</span>
-                  <button onClick={()=>{ if(myCode){ navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(()=>setCodeCopied(false),1500);} }} style={{ padding:"7px 13px", borderRadius:9, background:codeCopied?C.greenLt:C.surface, border:`1px solid ${codeCopied?C.green:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:codeCopied?C.green:C.textMid, cursor:"pointer" }}>{codeCopied?"Copied ✓":"Copy"}</button>
-                </div>
+              {/* Brief intro — full code lives in the header chip above */}
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, lineHeight:1.5, marginTop:6, marginBottom:14 }}>
+                Share your code (up top by your name) so people can add you — or enter a friend's code below.
               </div>
 
               {/* Add a friend by code */}
