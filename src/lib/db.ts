@@ -225,6 +225,25 @@ export async function markNotificationsSeen(): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export interface NotifPrefs { friend_requests: boolean; payments: boolean; votes: boolean; }
+const DEFAULT_PREFS: NotifPrefs = { friend_requests: true, payments: true, votes: true };
+export async function fetchNotifPrefs(): Promise<NotifPrefs> {
+  const s = await currentSession();
+  if (!s) return DEFAULT_PREFS;
+  const { data } = await sb().from("profiles").select("notification_prefs").eq("id", s.user.id).single();
+  const raw = (data as any)?.notification_prefs;
+  return { ...DEFAULT_PREFS, ...(raw && typeof raw === "object" ? raw : {}) };
+}
+export async function updateNotifPrefs(prefs: NotifPrefs): Promise<void> {
+  const s = await currentSession();
+  if (!s) throw new Error("Not signed in");
+  const { error } = await sb().from("profiles").update({ notification_prefs: prefs }).eq("id", s.user.id);
+  if (error) throw new Error(error.message);
+}
+export async function signOut(): Promise<void> {
+  await sb().auth.signOut();
+}
+
 export async function joinGroup(groupId: string): Promise<void> {
   const { error } = await sb().rpc("rpc_join_group", { p_group: groupId });
   if (error) throw new Error(error.message);
