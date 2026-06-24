@@ -2475,8 +2475,16 @@ export default function App() {
   const [codeCopied, setCodeCopied] = useState(false);
   // Profile settings panel + notification preferences
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [notifPrefs, setNotifPrefs] = useState({ friend_requests: true, payments: true, votes: true });
+  const [notifPrefs, setNotifPrefs] = useState({ payment_reminder:true, payment_confirmed:true, missed_payment:true, vote_opened:true, vote_closing:false, vote_result:true, member_joined:false });
   const [prefsBusy, setPrefsBusy] = useState(false);
+
+  useEffect(() => {
+    if (settingsOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [settingsOpen]);
 
   async function togglePref(key) {
     const next = { ...notifPrefs, [key]: !notifPrefs[key] };
@@ -3180,7 +3188,7 @@ export default function App() {
           {/* Settings sheet */}
           {settingsOpen && (
             <div onClick={()=>setSettingsOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"14px 20px 36px", width:"100%", maxWidth:440, maxHeight:"88vh", overflowY:"auto", border:`1px solid ${C.border}` }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"14px 20px 40px", width:"100%", maxWidth:440, maxHeight:"85dvh", overflowY:"auto", overscrollBehavior:"contain", WebkitOverflowScrolling:"touch", border:`1px solid ${C.border}` }}>
                 <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 18px" }} />
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
                   <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:800, color:C.text }}>Profile Settings</div>
@@ -3192,18 +3200,14 @@ export default function App() {
                   <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:C.blue, letterSpacing:1, textTransform:"uppercase" }}>Notifications</span>
                 </div>
                 <div style={{ background:C.surface2, borderRadius:14, border:`1px solid ${C.border}`, overflow:"hidden", marginBottom:8 }}>
-                  {[
-                    ["friend_requests","Friend Requests","When someone adds your code"],
-                    ["payments","Payment Alerts","Payment activity in your groups"],
-                    ["votes","Vote Activity","New and resolved group votes"],
-                  ].map(([key,title,sub],i,arr) => (
-                    <div key={key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 16px", borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none" }}>
+                  {NOTIF_SETTINGS.map((n,i,arr) => (
+                    <div key={n.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"15px 16px", borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none" }}>
                       <div style={{ flex:1, paddingRight:12 }}>
-                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:600, color:C.text }}>{title}</div>
-                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:2 }}>{sub}</div>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:600, color:C.text }}>{n.label}</div>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:2 }}>{n.desc}</div>
                       </div>
-                      <button onClick={()=>togglePref(key)} style={{ width:48, height:28, borderRadius:14, background:notifPrefs[key]?C.blue:C.border2, border:"none", cursor:"pointer", position:"relative", transition:"background .15s", flexShrink:0 }}>
-                        <div style={{ position:"absolute", top:3, left:notifPrefs[key]?23:3, width:22, height:22, borderRadius:"50%", background:"#fff", transition:"left .15s" }} />
+                      <button onClick={()=>togglePref(n.id)} style={{ width:48, height:28, borderRadius:14, background:notifPrefs[n.id]?C.blue:C.border2, border:"none", cursor:"pointer", position:"relative", transition:"background .15s", flexShrink:0 }}>
+                        <div style={{ position:"absolute", top:3, left:notifPrefs[n.id]?23:3, width:22, height:22, borderRadius:"50%", background:"#fff", transition:"left .15s" }} />
                       </button>
                     </div>
                   ))}
@@ -3243,7 +3247,11 @@ export default function App() {
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:24, fontWeight:800, color:C.text, letterSpacing:-0.5 }}>{me.name}</div>
               )}
               {nameErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:6 }}>{nameErr}</div>}
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:C.textMid, marginTop:5 }}>Sanduq member</div>
+              <button onClick={()=>{ if(myCode){ navigator.clipboard?.writeText(myCode); setCodeCopied(true); setTimeout(()=>setCodeCopied(false),1500);} }} style={{ display:"flex", alignItems:"center", gap:7, marginTop:8, padding:"6px 12px", borderRadius:20, background:C.surface, border:`1px solid ${C.border}`, cursor:"pointer" }}>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textDim, letterSpacing:0.5 }}>CODE</span>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:13, fontWeight:600, letterSpacing:1.5, color:C.text }}>{myCode || "········"}</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={codeCopied?C.green:C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
             </div>
           </div>
           <div style={{ padding:16 }}>
@@ -3348,38 +3356,6 @@ export default function App() {
                 </button>
               )}
               {handleErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:8 }}>{handleErr}</div>}
-            </SurfaceCard>
-
-            {/* Notification channel — hidden until notifications are wired */}
-            {false && (
-            <SurfaceCard>
-              <Eyebrow>Notification channel</Eyebrow>
-              <div style={{ display:"flex", gap:8, marginBottom:14 }}>
-                {["sms","email"].map(ch => (
-                  <button key={ch} onClick={()=>setChannel(ch)} style={{ flex:1, padding:10, borderRadius:10, background:channel===ch?C.green:C.surface2, border:`1px solid ${channel===ch?C.green:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:channel===ch?"#070B14":C.textMid, cursor:"pointer", transition:"all .15s" }}>
-                    {ch==="sms"?"📱 SMS":"📧 Email"}
-                  </button>
-                ))}
-              </div>
-              <input value={channel==="sms"?phone:""} onChange={e=>setPhone(e.target.value)} style={{ width:"100%", padding:"12px 14px", borderRadius:10, border:`1px solid ${C.border}`, background:C.surface2, fontFamily:"'DM Mono',monospace", fontSize:14, color:C.text }} />
-            </SurfaceCard>
-            )}
-
-            {/* Notification prefs */}
-            <SurfaceCard style={{ padding:"10px 18px" }}>
-              <div style={{ paddingTop:8, paddingBottom:6 }}><Eyebrow>Notification preferences</Eyebrow></div>
-              {NOTIF_SETTINGS.map((n,i) => (
-                <div key={n.id}>
-                  <div style={{ display:"flex", alignItems:"center", gap:14, padding:"13px 0" }}>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{n.label}</div>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2 }}>{n.desc}</div>
-                    </div>
-                    <Toggle on={toggles[n.id]} onChange={()=>setToggles(t=>({...t,[n.id]:!t[n.id]}))} />
-                  </div>
-                  {i<NOTIF_SETTINGS.length-1 && <Divider />}
-                </div>
-              ))}
             </SurfaceCard>
           </div>
         </div>
