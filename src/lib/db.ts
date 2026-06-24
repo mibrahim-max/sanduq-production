@@ -225,8 +225,8 @@ export async function markNotificationsSeen(): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-export interface NotifPrefs { friend_requests: boolean; payments: boolean; votes: boolean; }
-const DEFAULT_PREFS: NotifPrefs = { friend_requests: true, payments: true, votes: true };
+export interface NotifPrefs { [key: string]: boolean; }
+const DEFAULT_PREFS: NotifPrefs = { payment_reminder:true, payment_confirmed:true, missed_payment:true, vote_opened:true, vote_closing:false, vote_result:true, member_joined:false };
 export async function fetchNotifPrefs(): Promise<NotifPrefs> {
   const s = await currentSession();
   if (!s) return DEFAULT_PREFS;
