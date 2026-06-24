@@ -2473,6 +2473,20 @@ export default function App() {
   const [friendErr, setFriendErr] = useState(null);
   const [friendMsg, setFriendMsg] = useState(null);
   const [codeCopied, setCodeCopied] = useState(false);
+  // Profile settings panel + notification preferences
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState({ friend_requests: true, payments: true, votes: true });
+  const [prefsBusy, setPrefsBusy] = useState(false);
+
+  async function togglePref(key) {
+    const next = { ...notifPrefs, [key]: !notifPrefs[key] };
+    setNotifPrefs(next);
+    if (LIVE) { setPrefsBusy(true); try { await DB.updateNotifPrefs(next); } catch(e){ console.error(e); } finally { setPrefsBusy(false); } }
+  }
+  async function logOut() {
+    try { await DB.signOut(); } catch {}
+    window.location.reload();
+  }
   // Calendar
   const [calEvents, setCalEvents] = useState([]);
   const [calTab, setCalTab] = useState("upcoming");
@@ -2632,7 +2646,7 @@ export default function App() {
     })();
   }, []);
 
-  useEffect(() => { if (screen === "profile" && LIVE) loadFriends(); }, [screen]);
+  useEffect(() => { if (screen === "profile" && LIVE) { loadFriends(); DB.fetchNotifPrefs().then(setNotifPrefs).catch(()=>{}); } }, [screen]);
   useEffect(() => { if (screen === "calendar" && LIVE) loadCalendar(); }, [screen]);
   useEffect(() => {
     if (screen === "notifications" && LIVE) {
@@ -3163,27 +3177,73 @@ export default function App() {
       {/* PROFILE */}
       {screen==="profile" && (
         <div>
-          <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"56px 20px 24px", borderBottom:`1px solid ${C.border}` }}>
-            <div style={{ display:"flex", alignItems:"center", gap:14 }}>
-              <div style={{ width:56, height:56, borderRadius:"50%", background:me.color || C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, fontWeight:700, color:"#070B14" }}>{me.initials}</div>
-              <div style={{ flex:1 }}>
-                {editingName ? (
-                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                    <input autoFocus value={nameDraft} onChange={e=>setNameDraft(e.target.value)} placeholder="Your name"
-                      style={{ flex:1, background:C.surface2, border:`1px solid ${C.blue}`, borderRadius:10, padding:"8px 12px", fontFamily:"'DM Sans',sans-serif", fontSize:18, fontWeight:700, color:C.text }} />
-                    <button onClick={saveName} disabled={!nameDraft.trim() || savingName} style={{ padding:"8px 14px", borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#070B14", cursor:"pointer" }}>{savingName?"…":"Save"}</button>
-                  </div>
-                ) : (
-                  <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:700, color:C.text }}>{me.name}</div>
-                    <button onClick={()=>{ setNameDraft(me.name==="New member"||me.name==="Member"?"":me.name); setEditingName(true); }} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}>
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                    </button>
-                  </div>
-                )}
-                {nameErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:4 }}>{nameErr}</div>}
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:2 }}>Sanduq member</div>
+          {/* Settings sheet */}
+          {settingsOpen && (
+            <div onClick={()=>setSettingsOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"14px 20px 36px", width:"100%", maxWidth:440, maxHeight:"88vh", overflowY:"auto", border:`1px solid ${C.border}` }}>
+                <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 18px" }} />
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:800, color:C.text }}>Profile Settings</div>
+                  <button onClick={()=>setSettingsOpen(false)} style={{ width:34, height:34, borderRadius:"50%", background:C.surface2, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", fontSize:18, color:C.textMid }}>×</button>
+                </div>
+
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.blue} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:C.blue, letterSpacing:1, textTransform:"uppercase" }}>Notifications</span>
+                </div>
+                <div style={{ background:C.surface2, borderRadius:14, border:`1px solid ${C.border}`, overflow:"hidden", marginBottom:8 }}>
+                  {[
+                    ["friend_requests","Friend Requests","When someone adds your code"],
+                    ["payments","Payment Alerts","Payment activity in your groups"],
+                    ["votes","Vote Activity","New and resolved group votes"],
+                  ].map(([key,title,sub],i,arr) => (
+                    <div key={key} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"16px 16px", borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none" }}>
+                      <div style={{ flex:1, paddingRight:12 }}>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:600, color:C.text }}>{title}</div>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:2 }}>{sub}</div>
+                      </div>
+                      <button onClick={()=>togglePref(key)} style={{ width:48, height:28, borderRadius:14, background:notifPrefs[key]?C.blue:C.border2, border:"none", cursor:"pointer", position:"relative", transition:"background .15s", flexShrink:0 }}>
+                        <div style={{ position:"absolute", top:3, left:notifPrefs[key]?23:3, width:22, height:22, borderRadius:"50%", background:"#fff", transition:"left .15s" }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, color:C.textDim, lineHeight:1.5, marginBottom:22, padding:"0 2px" }}>These control what appears in your in-app notifications. Push alerts to your device are coming soon.</div>
+
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:C.textMid, letterSpacing:1, textTransform:"uppercase", marginBottom:10, paddingLeft:2 }}>Account</div>
+                <button onClick={logOut} style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:"15px 16px", borderRadius:14, background:C.redLt, border:`1px solid ${C.red}33`, cursor:"pointer" }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.red} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, color:C.red }}>Log Out</span>
+                </button>
               </div>
+            </div>
+          )}
+
+          <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"24px 20px 28px", borderBottom:`1px solid ${C.border}`, position:"relative" }}>
+            {/* top-right action buttons */}
+            <div style={{ display:"flex", justifyContent:"flex-end", gap:10, marginBottom:4 }}>
+              <button onClick={()=>{ setNameDraft(me.name==="New member"||me.name==="Member"?"":me.name); setEditingName(true); }} style={{ width:42, height:42, borderRadius:"50%", background:C.surface, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+              <button onClick={()=>setSettingsOpen(true)} style={{ width:42, height:42, borderRadius:"50%", background:C.surface, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+              </button>
+            </div>
+
+            {/* centered avatar + name */}
+            <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginTop:4 }}>
+              <div style={{ width:96, height:96, borderRadius:"50%", background:me.color || C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, fontWeight:700, color:"#070B14", boxShadow:`0 0 0 4px ${C.bg}, 0 0 0 5px ${(me.color||C.blue)}55`, marginBottom:16 }}>{me.initials}</div>
+              {editingName ? (
+                <div style={{ display:"flex", gap:8, alignItems:"center", width:"100%", maxWidth:300 }}>
+                  <input autoFocus value={nameDraft} onChange={e=>setNameDraft(e.target.value)} placeholder="Your name"
+                    style={{ flex:1, textAlign:"center", background:C.surface2, border:`1px solid ${C.blue}`, borderRadius:10, padding:"8px 12px", fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:800, color:C.text }} />
+                  <button onClick={saveName} disabled={!nameDraft.trim() || savingName} style={{ padding:"9px 14px", borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#070B14", cursor:"pointer" }}>{savingName?"…":"Save"}</button>
+                </div>
+              ) : (
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:24, fontWeight:800, color:C.text, letterSpacing:-0.5 }}>{me.name}</div>
+              )}
+              {nameErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:6 }}>{nameErr}</div>}
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:C.textMid, marginTop:5 }}>Sanduq member</div>
             </div>
           </div>
           <div style={{ padding:16 }}>
