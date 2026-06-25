@@ -3059,7 +3059,7 @@ export default function App() {
               const monthName = now.toLocaleDateString(undefined,{month:"long",year:"numeric"});
               const firstDay = new Date(cy, cm, 1).getDay();
               const daysInMonth = new Date(cy, cm+1, 0).getDate();
-              const kindColor = (k) => k==="due"?C.blue : k==="vote"?C.purple : k==="milestone"?C.green : C.textMid;
+              const kindColor = (k) => k==="due"?C.blue : k==="vote"?C.purple : k==="milestone"?"#E8836F" : C.textMid;
               // which days this month have events
               const dayHas = {};
               calEvents.forEach(e => { const d=new Date(e.date); if(d.getFullYear()===cy && d.getMonth()===cm){ (dayHas[d.getDate()] ||= new Set()).add(e.kind); } });
@@ -3091,9 +3091,9 @@ export default function App() {
                     </div>
                     {/* legend */}
                     <div style={{ display:"flex", gap:14, marginTop:14, flexWrap:"wrap" }}>
-                      {[["due","Due",C.blue],["vote","Vote",C.purple],["milestone","Goal",C.green]].map(([k,lbl,col]) => (
+                      {[["due","Due"],["vote","Vote"],["milestone","Goal"]].map(([k,lbl]) => (
                         <div key={k} style={{ display:"flex", alignItems:"center", gap:5 }}>
-                          <div style={{ width:7, height:7, borderRadius:"50%", background:col }} />
+                          <div style={{ width:7, height:7, borderRadius:"50%", background:kindColor(k) }} />
                           <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textMid }}>{lbl}</span>
                         </div>
                       ))}
