@@ -2867,7 +2867,7 @@ export default function App() {
               <div style={{ marginBottom:16 }}>
                 <div style={{ display:"flex", gap:8 }}>
                   <input value={joinCode} onChange={e=>setJoinCode(e.target.value)} placeholder="Join with a code…" style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", fontFamily:"'DM Mono',monospace", fontSize:12.5, color:C.text }} />
-                  <button onClick={handleJoin} disabled={!joinCode.trim() || joinBusy} style={{ padding:"0 18px", borderRadius:12, background:joinCode.trim()?C.green:C.surface2, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:700, color:joinCode.trim()?"#FFFFFF":C.textDim, cursor:"pointer" }}>{joinBusy?"…":"Join"}</button>
+                  <button onClick={handleJoin} disabled={!joinCode.trim() || joinBusy} style={{ padding:"0 18px", borderRadius:12, background:joinCode.trim()?C.green:C.surface2, border:`1px solid ${joinCode.trim()?C.green:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:700, color:joinCode.trim()?"#FFFFFF":C.textDim, cursor:joinCode.trim()?"pointer":"default" }}>{joinBusy?"…":"Join"}</button>
                 </div>
                 {joinErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.red, marginTop:8 }}>{joinErr}</div>}
               </div>
@@ -3269,7 +3269,7 @@ export default function App() {
               <div style={{ display:"flex", gap:8, marginBottom:6 }}>
                 <input value={friendCodeInput} onChange={e=>{ setFriendCodeInput(e.target.value.toUpperCase()); setFriendErr(null); setFriendMsg(null); }} placeholder="Enter a friend's code"
                   style={{ flex:1, background:C.surface2, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Mono',monospace", fontSize:14, letterSpacing:2, color:C.text }} />
-                <button onClick={addFriend} disabled={!friendCodeInput.trim()||friendBusy} style={{ padding:"0 16px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", opacity:(!friendCodeInput.trim()||friendBusy)?0.5:1 }}>{friendBusy?"…":"Add"}</button>
+                <button onClick={addFriend} disabled={!friendCodeInput.trim()||friendBusy} style={{ padding:"0 18px", borderRadius:10, background:(!friendCodeInput.trim()||friendBusy)?C.surface2:C.green, border:`1px solid ${(!friendCodeInput.trim()||friendBusy)?C.border:C.green}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:(!friendCodeInput.trim()||friendBusy)?C.textDim:"#fff", cursor:(!friendCodeInput.trim()||friendBusy)?"default":"pointer" }}>{friendBusy?"…":"Add"}</button>
               </div>
               {friendErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginBottom:8 }}>{friendErr}</div>}
               {friendMsg && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.green, marginBottom:8 }}>{friendMsg}</div>}
