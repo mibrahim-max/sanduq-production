@@ -37,17 +37,18 @@ function mapLiveGroup(row, contribRows, myId, idx) {
 
 // ── Design tokens — dark, blue accent, Sanduq branded ─────────
 const C = {
-  bg: "#070B14", surface: "#0E1521", surface2: "#131C2B",
-  border: "#1E2A3D", border2: "#2A3950",
-  // primary brand accent is now blue
-  green: "#3B8EF5", greenLt: "rgba(59,142,245,0.14)", greenDk: "#2B6FD6",
-  cyan: "#5AC8FA", cyanLt: "rgba(90,200,250,0.12)",
-  purple: "#8B7BF0", purpleLt: "rgba(139,123,240,0.15)", purpleBright: "#A99BF5",
-  blue: "#3B8EF5", blueLt: "rgba(59,142,245,0.12)",
-  amber: "#F5A623", amberLt: "rgba(245,166,35,0.14)",
-  red: "#F0556B", redLt: "rgba(240,85,107,0.12)",
-  pink: "#E07AC0", pinkLt: "rgba(224,122,192,0.12)",
-  text: "#FFFFFF", textMid: "#9BA8BD", textDim: "#6B7A90",
+  bg: "#F1F6F6", surface: "#FFFFFF", surface2: "#EAF3F2",
+  border: "#D8E7E6", border2: "#C4DBD9",
+  // primary brand accent is teal (Sea Glass)
+  green: "#118C8C", greenLt: "rgba(17,140,140,0.12)", greenDk: "#0E6973",
+  cyan: "#0EA5A5", cyanLt: "rgba(14,165,165,0.12)",
+  // lavender is the celebratory accent
+  purple: "#9B8BDB", purpleLt: "rgba(155,139,219,0.16)", purpleBright: "#8B7BD0",
+  blue: "#118C8C", blueLt: "rgba(17,140,140,0.12)",
+  amber: "#C5860C", amberLt: "rgba(197,134,12,0.13)",
+  red: "#D6455E", redLt: "rgba(214,69,94,0.11)",
+  pink: "#DC7A86", pinkLt: "rgba(220,122,134,0.12)",
+  text: "#0C2E2E", textMid: "#52706F", textDim: "#8BA3A2",
   white: "#FFFFFF",
 };
 
@@ -237,7 +238,7 @@ function Avatar({ m, size=36, ring=false }) {
     <div style={{
       width:size, height:size, borderRadius:"50%", background:m.color, flexShrink:0,
       display:"flex", alignItems:"center", justifyContent:"center",
-      fontSize:size*0.36, fontWeight:700, color:"#070B14",
+      fontSize:size*0.36, fontWeight:700, color:"#FFFFFF",
       boxShadow: ring ? `0 0 0 2px ${C.bg}` : "none",
       fontFamily:"'DM Sans',sans-serif", letterSpacing:0.2,
     }}>{m.initials}</div>
@@ -320,10 +321,10 @@ function Logo({ size = 38 }) {
     <div style={{ width:size, height:size, borderRadius:11, background:C.blue, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
       <svg width={size*0.62} height={size*0.62} viewBox="0 0 24 24" fill="none">
         {/* three pooled layers nested into a container */}
-        <rect x="3" y="4" width="18" height="16" rx="4" stroke="#070B14" strokeWidth="2"/>
-        <path d="M7 9.5h10" stroke="#070B14" strokeWidth="2" strokeLinecap="round"/>
-        <path d="M7 14.5h10" stroke="#070B14" strokeWidth="2" strokeLinecap="round" opacity="0.55"/>
-        <circle cx="12" cy="12" r="1.6" fill="#070B14"/>
+        <rect x="3" y="4" width="18" height="16" rx="4" stroke="#FFFFFF" strokeWidth="2"/>
+        <path d="M7 9.5h10" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round"/>
+        <path d="M7 14.5h10" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" opacity="0.55"/>
+        <circle cx="12" cy="12" r="1.6" fill="#FFFFFF"/>
       </svg>
     </div>
   );
@@ -401,7 +402,7 @@ function Scene({ scene, height = 150 }) {
   if (scene === "graduation") {
     return (
       <div style={wrap}>
-        <div style={{ position:"absolute", inset:0, background:"linear-gradient(170deg,#5AC8FA 0%,#3B8EF5 55%,#2B4FB0 100%)" }} />
+        <div style={{ position:"absolute", inset:0, background:"linear-gradient(170deg,#5EEAD4 0%,#118C8C 55%,#0E6973 100%)" }} />
         {/* sunburst rays */}
         <div style={{ position:"absolute", top:"-30%", left:"50%", width:"160%", height:"160%", transform:"translateX(-50%)", background:"repeating-conic-gradient(from 0deg at 50% 0%, rgba(255,255,255,0.08) 0deg 6deg, transparent 6deg 12deg)" }} />
         {/* mortarboard */}
@@ -423,7 +424,7 @@ function Scene({ scene, height = 150 }) {
 function Toggle({ on, onChange }) {
   return (
     <div onClick={onChange} style={{ width:42, height:24, borderRadius:12, background:on?C.green:C.border, position:"relative", cursor:"pointer", transition:"background .2s", flexShrink:0 }}>
-      <div style={{ position:"absolute", top:3, left:on?21:3, width:18, height:18, borderRadius:"50%", background:on?"#070B14":"#fff", transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,.4)" }} />
+      <div style={{ position:"absolute", top:3, left:on?21:3, width:18, height:18, borderRadius:"50%", background:"#fff", transition:"left .2s", boxShadow:"0 1px 3px rgba(0,0,0,.4)" }} />
     </div>
   );
 }
@@ -441,7 +442,7 @@ function Sheet({ open, onClose, children }) {
 
 function PrimaryBtn({ children, onClick, disabled }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{ width:"100%", padding:15, borderRadius:14, border:"none", background:disabled?C.border:C.green, color:disabled?C.textDim:"#070B14", fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, cursor:disabled?"default":"pointer", boxShadow:disabled?"none":`0 4px 16px ${C.green}44`, transition:"opacity .15s, transform .1s" }}
+    <button onClick={onClick} disabled={disabled} style={{ width:"100%", padding:15, borderRadius:14, border:"none", background:disabled?C.border:C.green, color:disabled?C.textDim:"#FFFFFF", fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, cursor:disabled?"default":"pointer", boxShadow:disabled?"none":`0 4px 16px ${C.green}44`, transition:"opacity .15s, transform .1s" }}
       onMouseDown={e=>!disabled&&(e.currentTarget.style.transform="scale(.97)")}
       onMouseUp={e=>e.currentTarget.style.transform=""}
     >{children}</button>
@@ -512,7 +513,7 @@ function PaymentsTab({ group, monthly, members, payments, onMarkSent, onConfirmR
               <div style={{ fontFamily:"'DM Mono',monospace", fontSize:24, fontWeight:500, color:C.green, marginTop:2 }}>${myPayment.amount}</div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2 }}>Send to {treasurer?.name?.split(" ")[0] || "treasurer"} · Due {group.nextDue}</div>
             </div>
-            <button onClick={()=>setShowModal(true)} style={{ padding:"12px 20px", borderRadius:12, border:"none", background:C.green, color:"#070B14", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, cursor:"pointer", boxShadow:`0 4px 14px ${C.green}55`, transition:"transform .1s" }}
+            <button onClick={()=>setShowModal(true)} style={{ padding:"12px 20px", borderRadius:12, border:"none", background:C.green, color:"#FFFFFF", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, cursor:"pointer", boxShadow:`0 4px 14px ${C.green}55`, transition:"transform .1s" }}
               onMouseDown={e=>e.currentTarget.style.transform="scale(.95)"}
               onMouseUp={e=>e.currentTarget.style.transform=""}>
               Send
@@ -522,7 +523,7 @@ function PaymentsTab({ group, monthly, members, payments, onMarkSent, onConfirmR
       )}
       {myPayment && myPayment.status === "pending" && (
         <div style={{ background:C.amberLt, border:`1px solid ${C.amber}44`, borderRadius:16, padding:"14px 16px", marginBottom:12, display:"flex", gap:12, alignItems:"center" }}>
-          <div style={{ width:30, height:30, borderRadius:"50%", background:C.amber, display:"flex", alignItems:"center", justifyContent:"center", color:"#070B14", fontSize:14, flexShrink:0 }}>⏳</div>
+          <div style={{ width:30, height:30, borderRadius:"50%", background:C.amber, display:"flex", alignItems:"center", justifyContent:"center", color:"#FFFFFF", fontSize:14, flexShrink:0 }}>⏳</div>
           <div>
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.text }}>Waiting for confirmation</div>
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:1 }}>You marked ${myPayment.amount} as sent · {treasurer?.name?.split(" ")[0]} will confirm receipt</div>
@@ -531,7 +532,7 @@ function PaymentsTab({ group, monthly, members, payments, onMarkSent, onConfirmR
       )}
       {myPayment && myPayment.status === "confirmed" && (
         <div style={{ background:C.greenLt, border:`1px solid ${C.green}33`, borderRadius:16, padding:"14px 16px", marginBottom:12, display:"flex", gap:12, alignItems:"center" }}>
-          <div style={{ width:30, height:30, borderRadius:"50%", background:C.green, display:"flex", alignItems:"center", justifyContent:"center", color:"#070B14", fontSize:15, fontWeight:700, flexShrink:0 }}>✓</div>
+          <div style={{ width:30, height:30, borderRadius:"50%", background:C.green, display:"flex", alignItems:"center", justifyContent:"center", color:"#FFFFFF", fontSize:15, fontWeight:700, flexShrink:0 }}>✓</div>
           <div>
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.text }}>June contribution confirmed</div>
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:1 }}>${myPayment.amount} · received by {treasurer?.name?.split(" ")[0]}</div>
@@ -549,7 +550,7 @@ function PaymentsTab({ group, monthly, members, payments, onMarkSent, onConfirmR
             </div>
           </div>
           <div style={{ display:"flex", gap:8 }}>
-            <button onClick={()=>onMarkSent(myPayment.id)} style={{ flex:1, padding:11, borderRadius:10, background:C.amber, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#070B14", cursor:"pointer" }}>I did send it — re-flag</button>
+            <button onClick={()=>onMarkSent(myPayment.id)} style={{ flex:1, padding:11, borderRadius:10, background:C.amber, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#FFFFFF", cursor:"pointer" }}>I did send it — re-flag</button>
             <button onClick={()=>onMarkUnpaid(myPayment.id)} style={{ flex:1, padding:11, borderRadius:10, background:"none", border:`1px solid ${C.border2}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.textMid, cursor:"pointer" }}>I'll send again</button>
           </div>
         </div>
@@ -584,12 +585,12 @@ function PaymentsTab({ group, monthly, members, payments, onMarkSent, onConfirmR
                 {/* Treasurer confirm / dispute on a pending payment */}
                 {isTreasurer && p.status === "pending" && !p.member.isMe ? (
                   <div style={{ display:"flex", flexDirection:"column", gap:6, flexShrink:0 }}>
-                    <button onClick={()=>onConfirmReceipt(p.id)} style={{ padding:"8px 13px", borderRadius:9, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#070B14", cursor:"pointer", minHeight:34 }}>Confirm</button>
+                    <button onClick={()=>onConfirmReceipt(p.id)} style={{ padding:"8px 13px", borderRadius:9, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#FFFFFF", cursor:"pointer", minHeight:34 }}>Confirm</button>
                     <button onClick={()=>onDispute(p.id)} style={{ padding:"6px 13px", borderRadius:9, background:"none", border:`1px solid ${C.red}55`, fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.red, cursor:"pointer" }}>Not received</button>
                   </div>
                 ) : isTreasurer && p.status === "disputed" && !p.member.isMe ? (
                   <div style={{ display:"flex", flexDirection:"column", gap:6, flexShrink:0 }}>
-                    <button onClick={()=>onConfirmReceipt(p.id)} style={{ padding:"8px 13px", borderRadius:9, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#070B14", cursor:"pointer", minHeight:34 }}>It arrived</button>
+                    <button onClick={()=>onConfirmReceipt(p.id)} style={{ padding:"8px 13px", borderRadius:9, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#FFFFFF", cursor:"pointer", minHeight:34 }}>It arrived</button>
                     <button onClick={()=>onMarkUnpaid(p.id)} style={{ padding:"6px 13px", borderRadius:9, background:"none", border:`1px solid ${C.border2}`, fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Mark unpaid</button>
                   </div>
                 ) : (
@@ -959,7 +960,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
                 Distribute the pot
               </button>
             ) : (
-              <div style={{ marginTop:14, padding:"12px 14px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:`1px dashed ${C.border2}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, textAlign:"center" }}>
+              <div style={{ marginTop:14, padding:"12px 14px", borderRadius:12, background:"rgba(0,0,0,0.03)", border:`1px dashed ${C.border2}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, textAlign:"center" }}>
                 Awaiting distribution by {treasurer?.name} (treasurer)
               </div>
             )}
@@ -990,7 +991,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
                     {d.confirmed ? (
                       <Pill label="Received ✓" color={C.green} bg={C.greenLt} />
                     ) : isMine ? (
-                      <button onClick={()=>confirmReceipt(d.memberId)} style={{ padding:"8px 14px", borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:700, color:"#070B14", cursor:"pointer", minHeight:36 }}>I received it</button>
+                      <button onClick={()=>confirmReceipt(d.memberId)} style={{ padding:"8px 14px", borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:700, color:"#FFFFFF", cursor:"pointer", minHeight:36 }}>I received it</button>
                     ) : (
                       <Pill label="Awaiting" color={C.amber} bg={C.amberLt} />
                     )}
@@ -1008,7 +1009,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
         {/* Completed banner */}
         {paidOut && (
           <div style={{ background:C.greenLt, border:`1px solid ${C.green}44`, borderRadius:18, padding:"16px 18px", marginBottom:14, display:"flex", alignItems:"center", gap:12 }}>
-            <div style={{ width:34, height:34, borderRadius:"50%", background:C.green, display:"flex", alignItems:"center", justifyContent:"center", color:"#070B14", fontSize:16, fontWeight:800, flexShrink:0 }}>✓</div>
+            <div style={{ width:34, height:34, borderRadius:"50%", background:C.green, display:"flex", alignItems:"center", justifyContent:"center", color:"#FFFFFF", fontSize:16, fontWeight:800, flexShrink:0 }}>✓</div>
             <div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:800, color:C.text }}>Sanduq completed</div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:1 }}>${g.goal.toLocaleString()} distributed · confirmed by all recipients · archived</div>
@@ -1035,7 +1036,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
             </div>
             {atRisk.length > 0 && (
               <div style={{ background:C.amberLt, border:`1px solid ${C.amber}44`, borderRadius:14, padding:"14px 16px", display:"flex", gap:12, alignItems:"flex-start", marginBottom:12 }}>
-                <div style={{ width:28, height:28, borderRadius:"50%", background:C.amber, display:"flex", alignItems:"center", justifyContent:"center", color:"#070B14", fontSize:13, fontWeight:700, flexShrink:0 }}>!</div>
+                <div style={{ width:28, height:28, borderRadius:"50%", background:C.amber, display:"flex", alignItems:"center", justifyContent:"center", color:"#FFFFFF", fontSize:13, fontWeight:700, flexShrink:0 }}>!</div>
                 <div>
                   <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.text }}>{atRisk.map(m=>m.name).join(", ")} {atRisk.length>1?"have":"has"} missed {MISS_LIMIT-1} payments</div>
                   <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:2 }}>One more miss triggers auto-removal with a pro-rata refund</div>
@@ -1075,7 +1076,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:700, color:C.text }}>Votes</div>
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2 }}>Majority = {Math.ceil(members.length/2+.01)} of {members.length}</div>
               </div>
-              <button onClick={()=>setShowPropose(true)} style={{ padding:"10px 18px", borderRadius:20, background:g.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:"#070B14", cursor:"pointer", boxShadow:`0 4px 12px ${g.bar}44`, transition:"transform .1s" }}
+              <button onClick={()=>setShowPropose(true)} style={{ padding:"10px 18px", borderRadius:20, background:g.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:"#FFFFFF", cursor:"pointer", boxShadow:`0 4px 12px ${g.bar}44`, transition:"transform .1s" }}
                 onMouseDown={e=>e.currentTarget.style.transform="scale(.95)"} onMouseUp={e=>e.currentTarget.style.transform=""}>
                 + Propose
               </button>
@@ -1466,7 +1467,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.name}</div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim }}>{f.mutual} mutual friends</div>
             </div>
-            <button onClick={e=>{ e.currentTarget.textContent="Invited"; e.currentTarget.disabled=true; e.currentTarget.style.opacity="0.5"; }} style={{ padding:"7px 14px", borderRadius:9, background:g.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#070B14", cursor:"pointer" }}>Invite</button>
+            <button onClick={e=>{ e.currentTarget.textContent="Invited"; e.currentTarget.disabled=true; e.currentTarget.style.opacity="0.5"; }} style={{ padding:"7px 14px", borderRadius:9, background:g.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#FFFFFF", cursor:"pointer" }}>Invite</button>
           </div>
         ))}
         </>}
@@ -1644,7 +1645,7 @@ function Onboarding({ onDone, invite }) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState(["","","","","",""]);
   const [name, setName] = useState("");
-  const [avatarColor, setAvatarColor] = useState("#3B8EF5");
+  const [avatarColor, setAvatarColor] = useState("#118C8C");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const codeRefs = useRef([]);
@@ -1802,7 +1803,7 @@ function Onboarding({ onDone, invite }) {
 
       {/* Avatar preview */}
       <div style={{ display:"flex", justifyContent:"center", marginBottom:14 }}>
-        <div style={{ width:96, height:96, borderRadius:"50%", background:avatarColor, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", fontSize:36, fontWeight:700, color:"#070B14" }}>{initials}</div>
+        <div style={{ width:96, height:96, borderRadius:"50%", background:avatarColor, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", fontSize:36, fontWeight:700, color:"#FFFFFF" }}>{initials}</div>
       </div>
       {/* Color picker */}
       <div style={{ display:"flex", gap:10, justifyContent:"center", marginBottom:28 }}>
@@ -2138,7 +2139,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
 
           {flaggedMembers.map(m => (
             <div key={m.member_id} style={{ display:"flex", gap:12, alignItems:"center", background:C.amberLt, border:`1px solid ${C.amber}44`, borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
-              <div style={{ width:30, height:30, borderRadius:"50%", background:C.amber, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:16, fontWeight:800, color:"#070B14" }}>!</div>
+              <div style={{ width:30, height:30, borderRadius:"50%", background:C.amber, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:16, fontWeight:800, color:"#FFFFFF" }}>!</div>
               <div>
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.text }}>{(m.profiles?.display_name)||"A member"} has missed {m.misses} payment{m.misses>1?"s":""}</div>
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:2 }}>{m.misses>=2?"One more miss triggers auto-removal with a pro-rata refund":"Catch-up owed before the next cycle"}</div>
@@ -2186,7 +2187,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             return (
               <div key={row.id}>
                 <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 0" }}>
-                  <div style={{ width:36, height:36, borderRadius:"50%", background:p?.avatar_color || C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#070B14", flexShrink:0 }}>
+                  <div style={{ width:36, height:36, borderRadius:"50%", background:p?.avatar_color || C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#FFFFFF", flexShrink:0 }}>
                     {(p?.display_name || "?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase()}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
@@ -2196,23 +2197,23 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                   <div style={{ display:"flex", flexDirection:"column", gap:6, alignItems:"flex-end", flexShrink:0 }}>
                     <div style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color:C.textMid }}>${(row.amount_cents/100).toLocaleString()}</div>
                     {mineRow && (row.status === "unpaid" || row.status === "missed") && (
-                      <button disabled={busy} onClick={()=>act(()=>DB.rpc.markSent(row.id), row.id)} style={{ padding:"8px 13px", borderRadius:9, background:C.green, border:"none", fontSize:12, fontWeight:700, color:"#070B14", minHeight:34, opacity:busy?0.6:1 }}>{busy?"…":"I've sent it"}</button>
+                      <button disabled={busy} onClick={()=>act(()=>DB.rpc.markSent(row.id), row.id)} style={{ padding:"8px 13px", borderRadius:9, background:C.green, border:"none", fontSize:12, fontWeight:700, color:"#FFFFFF", minHeight:34, opacity:busy?0.6:1 }}>{busy?"…":"I've sent it"}</button>
                     )}
                     {mineRow && row.status === "disputed" && (
                       <div style={{ display:"flex", gap:6 }}>
-                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.markSent(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:C.amber, border:"none", fontSize:11.5, fontWeight:700, color:"#070B14" }}>Re-flag sent</button>
+                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.markSent(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:C.amber, border:"none", fontSize:11.5, fontWeight:700, color:"#FFFFFF" }}>Re-flag sent</button>
                         <button disabled={busy} onClick={()=>act(()=>DB.rpc.resetUnpaid(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:"none", border:`1px solid ${C.border2}`, fontSize:11.5, fontWeight:600, color:C.textMid }}>I'll resend</button>
                       </div>
                     )}
                     {isTreasurer && !mineRow && row.status === "marked_sent" && (
                       <div style={{ display:"flex", gap:6 }}>
-                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.confirmReceipt(row.id), row.id)} style={{ padding:"8px 13px", borderRadius:9, background:C.green, border:"none", fontSize:12, fontWeight:700, color:"#070B14", minHeight:34 }}>{busy?"…":"Confirm"}</button>
+                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.confirmReceipt(row.id), row.id)} style={{ padding:"8px 13px", borderRadius:9, background:C.green, border:"none", fontSize:12, fontWeight:700, color:"#FFFFFF", minHeight:34 }}>{busy?"…":"Confirm"}</button>
                         <button disabled={busy} onClick={()=>act(()=>DB.rpc.dispute(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:"none", border:`1px solid ${C.red}55`, fontSize:11.5, fontWeight:600, color:C.red }}>Not received</button>
                       </div>
                     )}
                     {isTreasurer && !mineRow && row.status === "disputed" && (
                       <div style={{ display:"flex", gap:6 }}>
-                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.confirmReceipt(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:C.green, border:"none", fontSize:11.5, fontWeight:700, color:"#070B14" }}>It arrived</button>
+                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.confirmReceipt(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:C.green, border:"none", fontSize:11.5, fontWeight:700, color:"#FFFFFF" }}>It arrived</button>
                         <button disabled={busy} onClick={()=>act(()=>DB.rpc.resetUnpaid(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:"none", border:`1px solid ${C.border2}`, fontSize:11.5, fontWeight:600, color:C.textMid }}>Mark unpaid</button>
                       </div>
                     )}
@@ -2240,7 +2241,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
               return (
                 <div key={m.member_id}>
                   <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0" }}>
-                    <div style={{ width:38, height:38, borderRadius:"50%", background:prof.avatar_color||C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#070B14" }}>{(prof.display_name||"?").slice(0,2).toUpperCase()}</div>
+                    <div style={{ width:38, height:38, borderRadius:"50%", background:prof.avatar_color||C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#FFFFFF" }}>{(prof.display_name||"?").slice(0,2).toUpperCase()}</div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{prof.display_name||"Member"}{isMe?" (you)":""}</div>
                       {m.catchup_owed_cents > 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.amber, marginTop:1 }}>Catch-up owed: ${(m.catchup_owed_cents/100).toLocaleString()}</div>}
@@ -2341,7 +2342,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:4 }}>{yes} yes · {no} no · {needed} needed to pass</div>
                       {open && !iVoted && (
                         <div style={{ display:"flex", gap:8, marginTop:10 }}>
-                          <button onClick={()=>castBallot(v.id,"yes")} disabled={ballotBusy===v.id} style={{ flex:1, padding:10, borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#070B14", cursor:"pointer" }}>Yes</button>
+                          <button onClick={()=>castBallot(v.id,"yes")} disabled={ballotBusy===v.id} style={{ flex:1, padding:10, borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#FFFFFF", cursor:"pointer" }}>Yes</button>
                           <button onClick={()=>castBallot(v.id,"no")} disabled={ballotBusy===v.id} style={{ flex:1, padding:10, borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.text, cursor:"pointer" }}>No</button>
                           <button onClick={()=>castBallot(v.id,"abstain")} disabled={ballotBusy===v.id} style={{ padding:"10px 14px", borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Abstain</button>
                         </div>
@@ -2379,7 +2380,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                   const text = `Join my Sanduq "${g.name}" so we can save together: ${link}`;
                   if (navigator.share) { try { await navigator.share({ title:`Join ${g.name} on Sanduq`, text, url:link }); } catch {} }
                   else { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),1500); }
-                }} style={{ width:"100%", padding:12, borderRadius:12, background:group.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:"#070B14", cursor:"pointer" }}>Share invite</button>
+                }} style={{ width:"100%", padding:12, borderRadius:12, background:group.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:"#FFFFFF", cursor:"pointer" }}>Share invite</button>
 
                 {isTreasurer && (
                   <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
@@ -2396,7 +2397,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                         ) : (
                           friendList.map(f => (
                             <div key={f.other_id} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0" }}>
-                              <div style={{ width:36, height:36, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#070B14" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
+                              <div style={{ width:36, height:36, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#FFFFFF" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
                               <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.display_name}</div>
                               <button onClick={()=>inviteFriend(f.other_id)} disabled={invitingId===f.other_id} style={{ padding:"7px 14px", borderRadius:9, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer", opacity:invitingId===f.other_id?0.5:1 }}>{invitingId===f.other_id?"Adding…":"Add"}</button>
                             </div>
@@ -2800,7 +2801,7 @@ export default function App() {
                 <Wordmark size={20} />
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <button onClick={()=>setScreen("profile")} style={{ width:44, height:44, borderRadius:"50%", background:me.color || C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:700, color:"#070B14", border:"none", cursor:"pointer" }}>{me.initials}</button>
+                <button onClick={()=>setScreen("profile")} style={{ width:44, height:44, borderRadius:"50%", background:me.color || C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:700, color:"#FFFFFF", border:"none", cursor:"pointer" }}>{me.initials}</button>
               </div>
             </div>
 
@@ -2853,7 +2854,7 @@ export default function App() {
             return (
               <div style={{ padding:"0 18px", marginBottom:18, display:"flex", gap:9, overflowX:"auto" }}>
                 {used.map(c => (
-                  <button key={c} onClick={()=>setCat(c)} style={{ padding:"9px 18px", borderRadius:22, whiteSpace:"nowrap", fontSize:14, fontWeight:600, background:cat===c?C.green:C.surface, color:cat===c?"#070B14":C.textMid, border:`1px solid ${cat===c?C.green:C.border}`, transition:"all .15s" }}>{c}</button>
+                  <button key={c} onClick={()=>setCat(c)} style={{ padding:"9px 18px", borderRadius:22, whiteSpace:"nowrap", fontSize:14, fontWeight:600, background:cat===c?C.green:C.surface, color:cat===c?"#FFFFFF":C.textMid, border:`1px solid ${cat===c?C.green:C.border}`, transition:"all .15s" }}>{c}</button>
                 ))}
               </div>
             );
@@ -2866,7 +2867,7 @@ export default function App() {
               <div style={{ marginBottom:16 }}>
                 <div style={{ display:"flex", gap:8 }}>
                   <input value={joinCode} onChange={e=>setJoinCode(e.target.value)} placeholder="Join with a code…" style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", fontFamily:"'DM Mono',monospace", fontSize:12.5, color:C.text }} />
-                  <button onClick={handleJoin} disabled={!joinCode.trim() || joinBusy} style={{ padding:"0 18px", borderRadius:12, background:joinCode.trim()?C.green:C.surface2, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:700, color:joinCode.trim()?"#070B14":C.textDim, cursor:"pointer" }}>{joinBusy?"…":"Join"}</button>
+                  <button onClick={handleJoin} disabled={!joinCode.trim() || joinBusy} style={{ padding:"0 18px", borderRadius:12, background:joinCode.trim()?C.green:C.surface2, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:700, color:joinCode.trim()?"#FFFFFF":C.textDim, cursor:"pointer" }}>{joinBusy?"…":"Join"}</button>
                 </div>
                 {joinErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.red, marginTop:8 }}>{joinErr}</div>}
               </div>
@@ -2971,7 +2972,7 @@ export default function App() {
               <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"56px 20px 20px", borderBottom:`1px solid ${C.border}` }}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
                   <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:26, fontWeight:800, color:C.text }}>Messages</div>
-                  <button onClick={()=>setScreen("home")} style={{ padding:"8px 14px", borderRadius:20, background:"rgba(255,255,255,.08)", border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Close</button>
+                  <button onClick={()=>setScreen("home")} style={{ padding:"8px 14px", borderRadius:20, background:"rgba(0,0,0,0.05)", border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Close</button>
                 </div>
               </div>
               <div style={{ padding:16 }}>
@@ -3011,7 +3012,7 @@ export default function App() {
             return (
               <div style={{ display:"flex", flexDirection:"column", minHeight:"100vh" }}>
                 <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"56px 20px 16px", borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center", gap:12 }}>
-                  <button onClick={()=>setActiveDM(null)} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:18, padding:"7px 12px", color:C.textMid, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>←</button>
+                  <button onClick={()=>setActiveDM(null)} style={{ background:"rgba(0,0,0,0.05)", border:"none", borderRadius:18, padding:"7px 12px", color:C.textMid, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:"'DM Sans',sans-serif" }}>←</button>
                   <Avatar m={thread.friend} size={38} />
                   <div>
                     <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, fontWeight:700, color:C.text }}>{thread.friend.name}</div>
@@ -3145,7 +3146,7 @@ export default function App() {
           <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"56px 20px 20px", borderBottom:`1px solid ${C.border}` }}>
             <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:26, fontWeight:800, color:C.text }}>Activity</div>
-              {unread>0 && <button onClick={()=>setNotifs(ns=>ns.map(n=>({...n,read:true})))} style={{ padding:"8px 14px", borderRadius:20, background:"rgba(255,255,255,.08)", border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Mark all read</button>}
+              {unread>0 && <button onClick={()=>setNotifs(ns=>ns.map(n=>({...n,read:true})))} style={{ padding:"8px 14px", borderRadius:20, background:"rgba(0,0,0,0.05)", border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Mark all read</button>}
             </div>
           </div>
           <div style={{ padding:16 }}>
@@ -3236,12 +3237,12 @@ export default function App() {
 
             {/* centered avatar + name */}
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginTop:4 }}>
-              <div style={{ width:96, height:96, borderRadius:"50%", background:me.color || C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, fontWeight:700, color:"#070B14", boxShadow:`0 0 0 4px ${C.bg}, 0 0 0 5px ${(me.color||C.blue)}55`, marginBottom:16 }}>{me.initials}</div>
+              <div style={{ width:96, height:96, borderRadius:"50%", background:me.color || C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, fontWeight:700, color:"#FFFFFF", boxShadow:`0 0 0 4px ${C.bg}, 0 0 0 5px ${(me.color||C.blue)}55`, marginBottom:16 }}>{me.initials}</div>
               {editingName ? (
                 <div style={{ display:"flex", gap:8, alignItems:"center", width:"100%", maxWidth:300 }}>
                   <input autoFocus value={nameDraft} onChange={e=>setNameDraft(e.target.value)} placeholder="Your name"
                     style={{ flex:1, textAlign:"center", background:C.surface2, border:`1px solid ${C.blue}`, borderRadius:10, padding:"8px 12px", fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:800, color:C.text }} />
-                  <button onClick={saveName} disabled={!nameDraft.trim() || savingName} style={{ padding:"9px 14px", borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#070B14", cursor:"pointer" }}>{savingName?"…":"Save"}</button>
+                  <button onClick={saveName} disabled={!nameDraft.trim() || savingName} style={{ padding:"9px 14px", borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#FFFFFF", cursor:"pointer" }}>{savingName?"…":"Save"}</button>
                 </div>
               ) : (
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:24, fontWeight:800, color:C.text, letterSpacing:-0.5 }}>{me.name}</div>
@@ -3279,7 +3280,7 @@ export default function App() {
                   <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.amber, marginBottom:6 }}>Friend requests</div>
                   {friends.filter(f=>f.status==="requested" && f.direction==="incoming").map(f => (
                     <div key={f.friendship_id} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0" }}>
-                      <div style={{ width:38, height:38, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#070B14" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
+                      <div style={{ width:38, height:38, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#FFFFFF" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
                       <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.display_name}</div>
                       <button onClick={()=>respondToFriend(f.friendship_id, true)} disabled={friendBusy} style={{ padding:"8px 14px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer" }}>Accept</button>
                       <button onClick={()=>respondToFriend(f.friendship_id, false)} disabled={friendBusy} style={{ padding:"8px 12px", borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Decline</button>
@@ -3294,7 +3295,7 @@ export default function App() {
                   <Divider />
                   {friends.filter(f=>f.status==="accepted").map(f => (
                     <div key={f.friendship_id} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0" }}>
-                      <div style={{ width:38, height:38, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#070B14" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
+                      <div style={{ width:38, height:38, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#FFFFFF" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
                       <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.display_name}</div>
                     </div>
                   ))}
