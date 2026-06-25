@@ -3059,7 +3059,7 @@ export default function App() {
               const monthName = now.toLocaleDateString(undefined,{month:"long",year:"numeric"});
               const firstDay = new Date(cy, cm, 1).getDay();
               const daysInMonth = new Date(cy, cm+1, 0).getDate();
-              const kindColor = (k) => k==="due"?C.blue : k==="vote"?C.purple : k==="milestone"?"#E8836F" : C.textMid;
+              const kindColor = (k) => k==="due"?"#E8836F" : k==="vote"?C.purple : k==="milestone"?C.green : C.textMid;
               // which days this month have events
               const dayHas = {};
               calEvents.forEach(e => { const d=new Date(e.date); if(d.getFullYear()===cy && d.getMonth()===cm){ (dayHas[d.getDate()] ||= new Set()).add(e.kind); } });
