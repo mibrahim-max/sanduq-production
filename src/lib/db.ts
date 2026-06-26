@@ -46,7 +46,7 @@ export interface GroupRow {
   id: string; name: string; category: string; scene: string | null;
   goal_cents: number; monthly_cents: number; treasurer_id: string;
   join_policy: string; exit_policy: string; status: string; started_at: string;
-  join_code?: string;
+  join_code?: string; due_day?: number;
 }
 
 export async function fetchMyGroups(): Promise<GroupRow[]> {
@@ -251,6 +251,11 @@ export async function updateNotifPrefs(prefs: NotifPrefs): Promise<void> {
 }
 export async function signOut(): Promise<void> {
   await sb().auth.signOut();
+}
+
+export async function setDueDay(groupId: string, day: number): Promise<void> {
+  const { error } = await sb().rpc("rpc_set_due_day", { p_group: groupId, p_day: day });
+  if (error) throw new Error(error.message);
 }
 
 export async function joinByCode(code: string): Promise<string> {
