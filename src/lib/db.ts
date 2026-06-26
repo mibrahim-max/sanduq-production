@@ -46,6 +46,7 @@ export interface GroupRow {
   id: string; name: string; category: string; scene: string | null;
   goal_cents: number; monthly_cents: number; treasurer_id: string;
   join_policy: string; exit_policy: string; status: string; started_at: string;
+  join_code?: string;
 }
 
 export async function fetchMyGroups(): Promise<GroupRow[]> {
@@ -242,6 +243,12 @@ export async function updateNotifPrefs(prefs: NotifPrefs): Promise<void> {
 }
 export async function signOut(): Promise<void> {
   await sb().auth.signOut();
+}
+
+export async function joinByCode(code: string): Promise<string> {
+  const { data, error } = await sb().rpc("rpc_join_by_code", { p_code: code });
+  if (error) throw new Error(error.message);
+  return data as string;
 }
 
 export async function joinGroup(groupId: string): Promise<void> {
