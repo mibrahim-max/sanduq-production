@@ -9,13 +9,13 @@
       /* Prevent iOS Safari from auto-zooming when focusing inputs:
          iOS zooms in on any input with font-size < 16px. */
       input, textarea, select { font-size: 16px; }
-      /* Lock the page: no horizontal scroll/drag, no pinch zoom. The app is a
-         fixed-width mobile shell, so side-to-side dragging is never wanted. */
+      /* Lock the page: no horizontal scroll/drag, no pinch zoom. Vertical
+         scrolling works, but no rubber-band bounce that reveals the background. */
       html, body {
         max-width: 100%;
         overflow-x: hidden;
         touch-action: pan-y;          /* allow vertical scroll only */
-        overscroll-behavior-x: none;  /* no horizontal rubber-banding */
+        overscroll-behavior: none;    /* no rubber-band bounce, any direction */
         -webkit-text-size-adjust: 100%;
       }
       #root { max-width: 100%; overflow-x: hidden; }
