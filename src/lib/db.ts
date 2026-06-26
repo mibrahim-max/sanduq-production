@@ -323,11 +323,18 @@ export async function fetchChatUnread(): Promise<Record<string, number>> {
   return out;
 }
 
+let _chatChannelSeq = 0;
 export function subscribeToMessages(groupId: string, onMessage: () => void): () => void {
-  const channel = sb().channel(`chat-${groupId}`)
-    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `group_id=eq.${groupId}` }, onMessage)
+  // Unique channel name per call so two subscribers (panel + badge) never collide,
+  // which throws "cannot add postgres_changes callbacks after subscribe()".
+  const name = `chat-${groupId}-${Date.now()}-${_chatChannelSeq++}`;
+  const channel = sb().channel(name);
+  channel
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `group_id=eq.${groupId}` }, () => {
+      try { onMessage(); } catch {}
+    })
     .subscribe();
-  return () => { sb().removeChannel(channel); };
+  return () => { try { sb().removeChannel(channel); } catch {} };
 }
 
 export function subscribeToGroup(groupId: string, onChange: () => void): () => void {
