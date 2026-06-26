@@ -1844,8 +1844,125 @@ function Onboarding({ onDone, onGuest, invite }) {
 
 // ── Live group screen (Supabase-backed) ───────────────────────
 
+// ── Group chat panel ───────────────────────────────────────────
+function ChatPanel({ groupId, myId, onRead }) {
+  const [msgs, setMsgs] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const scrollRef = useRef(null);
+  const endRef = useRef(null);
+
+  async function load() {
+    try { const m = await DB.fetchMessages(groupId); setMsgs(m); }
+    catch (e) { /* keep prior */ }
+    finally { setLoaded(true); }
+  }
+
+  useEffect(() => {
+    load();
+    // Mark read on open, and tell the parent to clear the badge.
+    DB.markChatRead(groupId).then(()=>{ onRead && onRead(); }).catch(()=>{});
+    const unsub = DB.subscribeToMessages(groupId, () => { load(); DB.markChatRead(groupId).catch(()=>{}); });
+    return unsub;
+  }, [groupId]);
+
+  // Auto-scroll to newest whenever messages change.
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "auto" }); }, [msgs.length]);
+
+  async function send() {
+    const body = draft.trim();
+    if (!body || sending) return;
+    setSending(true);
+    try { await DB.sendMessage(groupId, body); setDraft(""); await load(); onRead && onRead(); }
+    catch (e) { /* surface lightly */ }
+    finally { setSending(false); }
+  }
+
+  const fmtTime = (iso) => {
+    try { return new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+    catch { return ""; }
+  };
+  const fmtDay = (iso) => {
+    try {
+      const d = new Date(iso), now = new Date();
+      const same = d.toDateString() === now.toDateString();
+      const yest = new Date(now); yest.setDate(now.getDate()-1);
+      if (same) return "Today";
+      if (d.toDateString() === yest.toDateString()) return "Yesterday";
+      return d.toLocaleDateString([], { month: "short", day: "numeric" });
+    } catch { return ""; }
+  };
+
+  // group messages by day for date separators
+  let lastDay = null;
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 230px)", minHeight:340 }}>
+      <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"6px 2px 10px", display:"flex", flexDirection:"column", gap:2 }}>
+        {!loaded && <div style={{ textAlign:"center", color:C.textDim, fontSize:13, padding:"30px 0", fontFamily:"'DM Sans',sans-serif" }}>Loading…</div>}
+        {loaded && msgs.length === 0 && (
+          <div style={{ textAlign:"center", padding:"44px 20px", margin:"auto 0" }}>
+            <div style={{ fontSize:34, marginBottom:12 }}>👋</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, color:C.text, marginBottom:5 }}>Say hi to the group</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, lineHeight:1.5, maxWidth:260, margin:"0 auto" }}>Coordinate payments and plans for this Sanduq right here.</div>
+          </div>
+        )}
+        {loaded && msgs.map((m) => {
+          const mine = m.sender_id === myId;
+          const day = fmtDay(m.created_at);
+          const showDay = day !== lastDay; lastDay = day;
+          return (
+            <div key={m.id}>
+              {showDay && (
+                <div style={{ textAlign:"center", margin:"14px 0 10px" }}>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textDim, background:C.surface2, padding:"3px 12px", borderRadius:12 }}>{day}</span>
+                </div>
+              )}
+              <div style={{ display:"flex", flexDirection:mine?"row-reverse":"row", alignItems:"flex-end", gap:8, marginBottom:8 }}>
+                {!mine && (
+                  <div style={{ width:28, height:28, borderRadius:"50%", background:m.sender_color||C.green, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, flexShrink:0, fontFamily:"'DM Sans',sans-serif" }}>
+                    {(m.sender_name||"?").slice(0,2).toUpperCase()}
+                  </div>
+                )}
+                <div style={{ maxWidth:"74%" }}>
+                  {!mine && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textMid, fontWeight:600, margin:"0 0 3px 4px" }}>{m.sender_name}</div>}
+                  <div style={{
+                    background: mine ? C.green : C.surface2,
+                    color: mine ? "#fff" : C.text,
+                    border: mine ? "none" : `1px solid ${C.border}`,
+                    borderRadius: mine ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                    padding:"9px 13px", fontFamily:"'DM Sans',sans-serif", fontSize:14, lineHeight:1.4, wordBreak:"break-word", whiteSpace:"pre-wrap",
+                  }}>{m.body}</div>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:10, color:C.textDim, margin: mine ? "3px 4px 0 0" : "3px 0 0 4px", textAlign: mine?"right":"left" }}>{fmtTime(m.created_at)}</div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={endRef} />
+      </div>
+      <div style={{ display:"flex", gap:8, alignItems:"flex-end", paddingTop:10, borderTop:`1px solid ${C.border}` }}>
+        <textarea
+          value={draft}
+          onChange={e=>setDraft(e.target.value)}
+          onKeyDown={e=>{ if (e.key==="Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          placeholder="Message the group…"
+          rows={1}
+          style={{ flex:1, resize:"none", background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"11px 14px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text, maxHeight:120, lineHeight:1.4 }}
+        />
+        <button onClick={send} disabled={!draft.trim()||sending} style={{ flexShrink:0, width:44, height:44, borderRadius:"50%", background: draft.trim()?C.green:C.surface2, border: draft.trim()?"none":`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor: draft.trim()?"pointer":"default" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={draft.trim()?"#fff":C.textDim} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const [detail, setDetail] = useState(null);
+  const [chatUnread, setChatUnread] = useState(0);
+  const onChatRead = () => setChatUnread(0);
   const [err, setErr] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -1962,10 +2079,19 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
     catch (e) { setErr(e.message); }
   }
 
+  async function loadChatUnread() {
+    if (tab === "chat") { setChatUnread(0); return; }
+    try { const u = await DB.fetchChatUnread(); setChatUnread(u[group.id] || 0); }
+    catch {}
+  }
+
   useEffect(() => {
     load();
+    loadChatUnread();
     const unsub = DB.subscribeToGroup(group.id, load);
-    return unsub;
+    // Live-update the unread badge when a message lands and we're not on the chat tab.
+    const unsubMsg = DB.subscribeToMessages(group.id, () => { if (tab !== "chat") loadChatUnread(); });
+    return () => { unsub(); unsubMsg(); };
   }, [group.id]);
 
   async function act(fn, id) {
@@ -2046,8 +2172,11 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
       {/* Tab bar */}
       <div className="tab-scroll" style={{ display:"flex", gap:4, padding:"14px 12px 0", overflowX:"auto", overflowY:"hidden", borderBottom:`1px solid ${C.border}`, position:"sticky", top:0, zIndex:20, background:C.bg, WebkitOverflowScrolling:"touch" }}>
         {[["overview","Overview"],["payments","Payments"],["votes","Votes"],["members","Members"],["chat","Chat"]].map(([k,lbl]) => (
-          <button key={k} onClick={()=>setTab(k)} style={{ position:"relative", padding:"10px 16px 14px", background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:tab===k?700:500, color:tab===k?C.blue:C.textMid }}>
+          <button key={k} onClick={()=>{ setTab(k); if(k==="chat") setChatUnread(0); }} style={{ position:"relative", padding:"10px 16px 14px", background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:tab===k?700:500, color:tab===k?C.blue:C.textMid }}>
             {lbl}
+            {k==="chat" && chatUnread>0 && (
+              <span style={{ marginLeft:6, minWidth:17, height:17, padding:"0 4px", borderRadius:9, background:C.red, color:"#fff", fontSize:10.5, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", verticalAlign:"middle" }}>{chatUnread>99?"99+":chatUnread}</span>
+            )}
             {tab===k && <div style={{ position:"absolute", bottom:-1, left:12, right:12, height:2, borderRadius:2, background:C.blue }} />}
           </button>
         ))}
@@ -2466,13 +2595,9 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         </SurfaceCard>
         </>)}
 
-        {/* ===== CHAT TAB (placeholder) ===== */}
+        {/* ===== CHAT TAB ===== */}
         {tab==="chat" && (
-          <div style={{ textAlign:"center", padding:"50px 20px" }}>
-            <div style={{ fontSize:40, marginBottom:14 }}>💬</div>
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:17, fontWeight:700, color:C.text, marginBottom:6 }}>Group chat is coming soon</div>
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:C.textMid, lineHeight:1.5, maxWidth:280, margin:"0 auto" }}>Soon you'll be able to coordinate payments and plans with your group right here.</div>
-          </div>
+          <ChatPanel groupId={group.id} myId={myId} onRead={onChatRead} />
         )}
         </>}
       </div>
