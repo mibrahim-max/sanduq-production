@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import * as DB from "./lib/db";
+import { THEMES, THEME_GROUP_ORDER, resolveTheme, THEME_FONT_HREF } from "./lib/themes";
 
 // LIVE mode: set VITE_USE_SUPABASE=1 in .env to run against Supabase.
 // Without it, the app runs on the built-in demo data below.
@@ -29,6 +30,7 @@ function mapLiveGroup(row, contribRows, myId, idx) {
     bar: LIVE_BARS[idx % LIVE_BARS.length],
     emoji: CAT_EMOJI[row.category] || CAT_EMOJI.Other,
     scene: row.scene || null,
+    theme: row.theme || null,
     exitPolicy: row.exit_policy, joinPolicy: row.join_policy, monthsIn,
     treasurerId: row.treasurer_id,
     status: row.status === "completed" ? "completed" : undefined,
@@ -1970,6 +1972,15 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const [codeCopied2, setCodeCopied2] = useState(false);
   // Edit + close
   const [editing, setEditing] = useState(false);
+  const [themePicker, setThemePicker] = useState(false);
+  const [themeBusy, setThemeBusy] = useState(false);
+  async function chooseTheme(id) {
+    if (themeBusy) return;
+    setThemeBusy(true);
+    try { await DB.setTheme(group.id, id); await load(); onChanged && onChanged(); setThemePicker(false); }
+    catch (e) { /* keep sheet open on error */ }
+    finally { setThemeBusy(false); }
+  }
   const [edName, setEdName] = useState("");
   const [edCat, setEdCat] = useState("Other");
   const [edGoal, setEdGoal] = useState("");
@@ -2110,6 +2121,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   }
 
   const g = detail?.group;
+  const theme = resolveTheme(g?.theme);
   const isTreasurer = g && g.treasurer_id === myId;
   const cycleKey = detail ? [...new Set(detail.contributions.map(c=>c.cycle))].sort().reverse()[0] : null;
   const cycleRows = detail ? detail.contributions.filter(c => c.cycle === cycleKey) : [];
@@ -2149,41 +2161,50 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   }[s] || { label:s, color:C.textMid, bg:C.surface2 });
 
   return (
-    <div style={{ minHeight:"100vh", background:C.bg, paddingBottom:40 }}>
-      <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}.tab-scroll::-webkit-scrollbar{display:none}.tab-scroll{scrollbar-width:none;-ms-overflow-style:none}`}</style>
+    <div style={{ minHeight:"100vh", background:theme.bg, paddingBottom:40, position:"relative" }}>
+      <style>{`${FONTS}@import url('${THEME_FONT_HREF}');*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}.tab-scroll::-webkit-scrollbar{display:none}.tab-scroll{scrollbar-width:none;-ms-overflow-style:none}`}</style>
 
-      {/* Gradient cover header */}
-      <div style={{ position:"relative", background:`linear-gradient(155deg, ${catColor[0]}, ${catColor[1]})`, padding:"52px 20px 70px", overflow:"hidden" }}>
-        <div style={{ position:"absolute", inset:0, background:"radial-gradient(circle at 80% 20%, rgba(255,255,255,.18), transparent 60%)" }} />
-        <button onClick={onBack} style={{ position:"relative", background:"rgba(0,0,0,.25)", border:"none", borderRadius:20, padding:"7px 14px 7px 10px", color:"#fff", fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, marginBottom:18 }}>← Back</button>
+      {/* Ambient themed emoji floating in the world */}
+      <div style={{ position:"absolute", top:60, right:-10, fontSize:96, opacity:0.4, transform:"rotate(12deg)", pointerEvents:"none", zIndex:0 }}>{theme.emoji}</div>
+
+      {/* Immersive themed header */}
+      <div style={{ position:"relative", background:"transparent", padding:"52px 20px 26px", overflow:"hidden", zIndex:1 }}>
+        <div style={{ position:"absolute", inset:0, background:theme.atmos, pointerEvents:"none" }} />
+        <button onClick={onBack} style={{ position:"relative", background:theme.chip, border:"none", borderRadius:20, padding:"7px 14px 7px 10px", color:theme.chipText, fontSize:13, fontWeight:600, display:"flex", alignItems:"center", gap:6, marginBottom:18 }}>← Back</button>
         <div style={{ position:"relative", display:"flex", alignItems:"flex-start", gap:12 }}>
-          <div style={{ fontSize:34, lineHeight:1 }}>{group.emoji}</div>
+          <div style={{ fontSize:44, lineHeight:1 }}>{theme.emoji}</div>
           <div style={{ flex:1 }}>
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:28, fontWeight:800, color:"#fff", letterSpacing:-0.8, lineHeight:1.1, textShadow:"0 2px 12px rgba(0,0,0,.3)" }}>{group.name}</div>
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:"rgba(255,255,255,.85)", marginTop:4 }}>Started {group.started} · {detail ? detail.members.filter(m=>!m.removed).length : "…"} member{detail && detail.members.filter(m=>!m.removed).length===1?"":"s"}</div>
+            <div style={{ fontFamily:theme.font, fontSize:theme.titleSize||28, fontWeight:theme.tw, color:theme.titleColor, letterSpacing:theme.ls, lineHeight:1.05 }}>{group.name}</div>
+            <div style={{ fontFamily:theme.bodyFont||"'DM Sans',sans-serif", fontSize:13, color:theme.sub, marginTop:4 }}>Started {group.started} · {detail ? detail.members.filter(m=>!m.removed).length : "…"} member{detail && detail.members.filter(m=>!m.removed).length===1?"":"s"}</div>
           </div>
+          <button onClick={()=>setThemePicker(true)} title="Change theme" style={{ width:40, height:40, borderRadius:"50%", background:theme.chip, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginRight:8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.chipText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill={theme.chipText}/><circle cx="17.5" cy="10.5" r=".5" fill={theme.chipText}/><circle cx="8.5" cy="7.5" r=".5" fill={theme.chipText}/><circle cx="6.5" cy="12.5" r=".5" fill={theme.chipText}/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
+          </button>
           {isTreasurer && (
-            <button onClick={openEdit} title="Edit Sanduq" style={{ width:40, height:40, borderRadius:"50%", background:"rgba(0,0,0,.25)", border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
+            <button onClick={openEdit} title="Edit Sanduq" style={{ width:40, height:40, borderRadius:"50%", background:theme.chip, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={theme.chipText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
             </button>
           )}
         </div>
       </div>
 
-      {/* Progress card overlapping the header */}
+      {/* Progress card — themed glass on the immersive background */}
       {detail && (
-        <div style={{ margin:"-52px 16px 0", position:"relative", background:C.surface, border:`1px solid ${C.border}`, borderRadius:18, padding:"18px 20px", boxShadow:"0 8px 30px rgba(0,0,0,.35)" }}>
+        <div style={{ margin:"6px 16px 0", position:"relative", zIndex:1, background:theme.glass, border:`1px solid ${theme.glassBorder}`, borderRadius:18, padding:"18px 20px", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:10 }}>
-            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:500, color:C.text, letterSpacing:-1 }}>${(potCents/100).toLocaleString()}</span>
-            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.textMid }}>of ${(g.goal_cents/100).toLocaleString()}</span>
+            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:500, color:theme.glassText, letterSpacing:-1 }}>${(potCents/100).toLocaleString()}</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:theme.glassSub }}>of ${(g.goal_cents/100).toLocaleString()}</span>
           </div>
-          <Bar pct={Math.min(1, potCents/g.goal_cents)} color={catColor[0]} h={7} />
+          <div style={{ height:7, background:theme.track, borderRadius:5, overflow:"hidden" }}><div style={{ width:`${Math.min(100, 100*potCents/g.goal_cents)}%`, height:"100%", background:theme.accent, borderRadius:5 }} /></div>
           <div style={{ display:"flex", justifyContent:"space-between", marginTop:8 }}>
-            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:catColor[0] }}>{Math.round(100*potCents/g.goal_cents)}% funded</span>
-            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid }}>${((g.goal_cents-potCents)/100).toLocaleString()} to go</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:theme.glassText }}>{Math.round(100*potCents/g.goal_cents)}% funded</span>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:theme.glassSub }}>${((g.goal_cents-potCents)/100).toLocaleString()} to go</span>
           </div>
         </div>
       )}
+
+      {/* Content sheet — light surface floating on the themed world for readability */}
+      <div style={{ position:"relative", zIndex:2, background:C.bg, borderTopLeftRadius:26, borderTopRightRadius:26, marginTop:18, minHeight:"60vh", boxShadow:"0 -8px 30px rgba(0,0,0,.12)" }}>
 
       {/* Tab bar */}
       <div className="tab-scroll" style={{ display:"flex", gap:4, padding:"14px 12px 0", overflowX:"auto", overflowY:"hidden", borderBottom:`1px solid ${C.border}`, position:"sticky", top:0, zIndex:20, background:C.bg, WebkitOverflowScrolling:"touch" }}>
@@ -2197,6 +2218,38 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
           </button>
         ))}
       </div>
+
+      {themePicker && (
+        <div onClick={()=>!themeBusy&&setThemePicker(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+          <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"22px 18px 32px", width:"100%", maxWidth:460, maxHeight:"86vh", overflowY:"auto", border:`1px solid ${C.border}` }}>
+            <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 16px" }} />
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:19, fontWeight:800, color:C.text, marginBottom:4 }}>Choose a theme</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginBottom:18, lineHeight:1.45 }}>Give this Sanduq its own look. Any member can change it.</div>
+            {THEME_GROUP_ORDER.map(grp => {
+              const inGroup = THEMES.filter(t => t.group === grp);
+              if (!inGroup.length) return null;
+              return (
+                <div key={grp} style={{ marginBottom:18 }}>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:C.textDim, marginBottom:10 }}>{grp}</div>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:10 }}>
+                    {inGroup.map(t => {
+                      const active = (g?.theme || "minimal_light") === t.id;
+                      return (
+                        <button key={t.id} onClick={()=>chooseTheme(t.id)} disabled={themeBusy} style={{ position:"relative", padding:0, border:active?`2.5px solid ${C.green}`:`1px solid ${C.border}`, borderRadius:14, overflow:"hidden", cursor:"pointer", aspectRatio:"1 / 1", background:t.bg }}>
+                          <div style={{ position:"absolute", inset:0, background:t.atmos }} />
+                          <div style={{ position:"absolute", top:7, left:8, fontSize:22 }}>{t.emoji}</div>
+                          <div style={{ position:"absolute", bottom:7, left:8, right:6, fontFamily:t.font, fontSize:12, fontWeight:t.tw>700?700:t.tw, color:t.titleColor, lineHeight:1.05, textAlign:"left" }}>{t.name}</div>
+                          {active && <div style={{ position:"absolute", top:6, right:6, width:18, height:18, borderRadius:"50%", background:C.green, display:"flex", alignItems:"center", justifyContent:"center" }}><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {editing && (() => {
         const memberCount = detail ? detail.members.filter(m=>!m.removed).length : 0;
@@ -2626,6 +2679,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         )}
         </>}
       </div>
+      </div>{/* end content sheet */}
     </div>
   );
 }
@@ -3124,8 +3178,13 @@ export default function App() {
                   onMouseLeave={e=>{e.currentTarget.style.transform="";e.currentTarget.style.borderColor=C.border}}>
 
                   {/* Poster header */}
-                  <div style={{ position:"relative", height:150, padding:16, display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
-                    <Scene scene={g.scene} />
+                  <div style={{ position:"relative", height:150, padding:16, display:"flex", flexDirection:"column", justifyContent:"space-between", background: g.theme ? resolveTheme(g.theme).bg : undefined, overflow:"hidden" }}>
+                    {g.theme ? (
+                      <>
+                        <div style={{ position:"absolute", inset:0, background:resolveTheme(g.theme).atmos }} />
+                        <div style={{ position:"absolute", bottom:-12, right:-6, fontSize:78, opacity:0.35, transform:"rotate(-10deg)" }}>{resolveTheme(g.theme).emoji}</div>
+                      </>
+                    ) : <Scene scene={g.scene} />}
                     {/* dark gradient for text legibility */}
                     <div style={{ position:"absolute", inset:0, background:"linear-gradient(180deg,rgba(0,0,0,0.05) 40%,rgba(0,0,0,0.55) 100%)" }} />
                     {/* top row: pills */}
