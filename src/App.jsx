@@ -2179,7 +2179,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   }[s] || { label:s, color:C.textMid, bg:C.surface2 });
 
   return (
-    <div style={{ minHeight:"100vh", background:theme.bg, paddingBottom:40, position:"relative" }}>
+    <div style={{ minHeight:"100vh", width:"100%", maxWidth:"100%", background:theme.bg, paddingBottom:40, position:"relative", overflowX:"hidden" }}>
       <style>{`${FONTS}@import url('${THEME_FONT_HREF}');*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}.tab-scroll::-webkit-scrollbar{display:none}.tab-scroll{scrollbar-width:none;-ms-overflow-style:none}`}</style>
 
       {/* Ambient themed emoji floating in the world */}
@@ -2359,22 +2359,22 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         {/* ===== OVERVIEW TAB ===== */}
         {tab==="overview" && (<>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
-            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px" }}>
+            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px", minWidth:0, overflow:"hidden" }}>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Monthly Due</div>
               <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:T.text, marginTop:8, letterSpacing:-0.5 }}>${(g.monthly_cents/100).toLocaleString()}</div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>per member</div>
             </div>
-            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px" }}>
+            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px", minWidth:0, overflow:"hidden" }}>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Next Payment</div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:24, fontWeight:800, color:T.text, marginTop:8, letterSpacing:-0.5 }}>{nextDue.label}</div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>{nextDue.days} day{nextDue.days===1?"":"s"} away</div>
             </div>
-            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px" }}>
+            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px", minWidth:0, overflow:"hidden" }}>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Active Votes</div>
               <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:openVotesCount>0?C.purpleBright:C.text, marginTop:8 }}>{openVotesCount}</div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>{openVotesCount>0?"need attention":"none open"}</div>
             </div>
-            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px" }}>
+            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px", minWidth:0, overflow:"hidden" }}>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Your Total</div>
               <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:T.text, marginTop:8, letterSpacing:-0.5 }}>${(myConfirmedCents/100).toLocaleString()}</div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>contributed</div>
