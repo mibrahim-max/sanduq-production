@@ -285,6 +285,51 @@ export async function fetchGroupDetail(groupId: string) {
 }
 
 // ── Realtime: live confirmations and chat-ready subscription ─
+export interface ChatMessage {
+  id: string; group_id: string; sender_id: string; body: string; created_at: string;
+  sender_name?: string; sender_color?: string;
+}
+
+export async function fetchMessages(groupId: string): Promise<ChatMessage[]> {
+  const { data, error } = await sb().from("messages")
+    .select("*, profiles(display_name, avatar_color)")
+    .eq("group_id", groupId)
+    .order("created_at", { ascending: true })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  return (data || []).map((m: any) => ({
+    id: m.id, group_id: m.group_id, sender_id: m.sender_id, body: m.body, created_at: m.created_at,
+    sender_name: m.profiles?.display_name || "Member", sender_color: m.profiles?.avatar_color || "#118C8C",
+  }));
+}
+
+export async function sendMessage(groupId: string, body: string): Promise<void> {
+  const uid = await currentUserId();
+  if (!uid) throw new Error("Not signed in");
+  const { error } = await sb().from("messages").insert({ group_id: groupId, sender_id: uid, body });
+  if (error) throw new Error(error.message);
+}
+
+export async function markChatRead(groupId: string): Promise<void> {
+  const { error } = await sb().rpc("rpc_mark_chat_read", { p_group: groupId });
+  if (error) throw new Error(error.message);
+}
+
+export async function fetchChatUnread(): Promise<Record<string, number>> {
+  const { data, error } = await sb().rpc("rpc_chat_unread");
+  if (error) return {};
+  const out: Record<string, number> = {};
+  (data || []).forEach((r: any) => { out[r.group_id] = Number(r.unread) || 0; });
+  return out;
+}
+
+export function subscribeToMessages(groupId: string, onMessage: () => void): () => void {
+  const channel = sb().channel(`chat-${groupId}`)
+    .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: `group_id=eq.${groupId}` }, onMessage)
+    .subscribe();
+  return () => { sb().removeChannel(channel); };
+}
+
 export function subscribeToGroup(groupId: string, onChange: () => void): () => void {
   const channel = sb().channel(`group-${groupId}`)
     .on("postgres_changes", { event: "*", schema: "public", table: "contributions", filter: `group_id=eq.${groupId}` }, onChange)
