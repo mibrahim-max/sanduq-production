@@ -2784,6 +2784,7 @@ export default function App() {
   }
 
   async function acceptInvite(groupId) {
+    if (inviteJoining) return; // prevent double-fire (boot effect + onDone race)
     setInviteJoining(true); setJoinErr(null);
     try {
       await DB.joinGroup(groupId);
@@ -2791,7 +2792,10 @@ export default function App() {
       setPendingInvite(null);
       clearInviteFromUrl();
     } catch (e) {
-      setJoinErr(e.message);
+      // "Already a member" is fine here — it just means the join already happened.
+      if (!/already a member/i.test(e.message || "")) setJoinErr(e.message);
+      setPendingInvite(null);
+      clearInviteFromUrl();
     } finally {
       setInviteJoining(false);
     }
