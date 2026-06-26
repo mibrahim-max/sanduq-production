@@ -2359,8 +2359,8 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         </SurfaceCard>
         )}
 
-        {/* ===== PAYMENTS TAB: invite + audit ===== */}
-        {tab==="payments" && (<>
+        {/* ===== MEMBERS TAB: invite ===== */}
+        {tab==="members" && (<>
         {/* Invite link */}
         <SurfaceCard>
           <Eyebrow>Invite</Eyebrow>
@@ -2428,7 +2428,10 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             );
           })()}
         </SurfaceCard>
+        </>)}
 
+        {/* ===== PAYMENTS TAB: audit ===== */}
+        {tab==="payments" && (<>
         {/* Audit trail */}
         <SurfaceCard>
           <Eyebrow>Audit trail · append-only</Eyebrow>
