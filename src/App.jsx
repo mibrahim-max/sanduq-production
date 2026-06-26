@@ -1831,6 +1831,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const [err, setErr] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [codeCopied2, setCodeCopied2] = useState(false);
   // Edit + close
   const [editing, setEditing] = useState(false);
   const [edName, setEdName] = useState("");
@@ -2366,18 +2367,32 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
           <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, lineHeight:1.5, marginBottom:10 }}>
             {g.join_policy === "closed"
               ? "This group is locked, so new members can't join."
-              : "Share this link. Tapping it shows them the group and walks them through creating an account, then drops them right in."}
+              : "Share the code or link. Friends enter the code on their home screen, or tap the link to join instantly."}
           </div>
           {g.join_policy !== "closed" && (() => {
             const link = `${window.location.origin}/?join=${group.id}`;
+            const code = g.join_code || "";
             return (
               <>
+                {code && (
+                  <div style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", marginBottom:8, textAlign:"center" }}>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textDim, letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>Join code</div>
+                    <div style={{ display:"flex", gap:10, alignItems:"center", justifyContent:"center" }}>
+                      <span style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:600, letterSpacing:4, color:C.green }}>{code}</span>
+                      <button onClick={()=>{ navigator.clipboard?.writeText(code); setCodeCopied2(true); setTimeout(()=>setCodeCopied2(false),1500); }} style={{ width:34, height:34, borderRadius:9, background:codeCopied2?C.greenLt:C.surface, border:`1px solid ${codeCopied2?C.green:C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={codeCopied2?C.green:C.textMid} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <div style={{ display:"flex", gap:8, alignItems:"center", background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"11px 13px", marginBottom:8 }}>
                   <span style={{ flex:1, fontFamily:"'DM Mono',monospace", fontSize:11.5, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{link}</span>
                   <button onClick={()=>{ navigator.clipboard?.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),1500); }} style={{ padding:"6px 12px", borderRadius:8, background:copied?C.greenLt:C.surface, border:`1px solid ${copied?C.green:C.border}`, fontSize:12, fontWeight:700, color:copied?C.green:C.textMid }}>{copied?"Copied ✓":"Copy"}</button>
                 </div>
                 <button onClick={async ()=>{
-                  const text = `Join my Sanduq "${g.name}" so we can save together: ${link}`;
+                  const text = code
+                    ? `Join my Sanduq "${g.name}" so we can save together. Use code ${code} or tap: ${link}`
+                    : `Join my Sanduq "${g.name}" so we can save together: ${link}`;
                   if (navigator.share) { try { await navigator.share({ title:`Join ${g.name} on Sanduq`, text, url:link }); } catch {} }
                   else { navigator.clipboard?.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),1500); }
                 }} style={{ width:"100%", padding:12, borderRadius:12, background:group.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:"#FFFFFF", cursor:"pointer" }}>Share invite</button>
@@ -2665,12 +2680,19 @@ export default function App() {
 
   async function handleJoin() {
     let code = joinCode.trim();
-    // Accept a full invite link or a bare id
-    const m = code.match(/[?&]join=([0-9a-fA-F-]{36})/);
-    if (m) code = m[1];
     if (!code || joinBusy) return;
     setJoinErr(null); setJoinBusy(true);
-    try { await DB.joinGroup(code); setJoinCode(""); await loadLive(); }
+    try {
+      // A full invite link or bare UUID → join by id. Otherwise treat as a short code.
+      const m = code.match(/[?&]join=([0-9a-fA-F-]{36})/);
+      const isUuid = /^[0-9a-fA-F-]{36}$/.test(code);
+      if (m || isUuid) {
+        await DB.joinGroup(m ? m[1] : code);
+      } else {
+        await DB.joinByCode(code);
+      }
+      setJoinCode(""); await loadLive();
+    }
     catch (e) { setJoinErr(e.message); }
     finally { setJoinBusy(false); }
   }
@@ -2866,7 +2888,7 @@ export default function App() {
             {LIVE && !loading && (
               <div style={{ marginBottom:16 }}>
                 <div style={{ display:"flex", gap:8 }}>
-                  <input value={joinCode} onChange={e=>setJoinCode(e.target.value)} placeholder="Join with a code…" style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text }} />
+                  <input value={joinCode} onChange={e=>setJoinCode(e.target.value)} placeholder="Enter a join code…" style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text }} />
                   <button onClick={handleJoin} disabled={!joinCode.trim() || joinBusy} style={{ padding:"0 18px", borderRadius:12, background:joinCode.trim()?C.green:C.surface2, border:`1px solid ${joinCode.trim()?C.green:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:700, color:joinCode.trim()?"#FFFFFF":C.textDim, cursor:joinCode.trim()?"pointer":"default" }}>{joinBusy?"…":"Join"}</button>
                 </div>
                 {joinErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.red, marginTop:8 }}>{joinErr}</div>}
