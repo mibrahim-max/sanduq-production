@@ -2664,6 +2664,7 @@ export default function App() {
   const [calEvents, setCalEvents] = useState([]);
   const [calTab, setCalTab] = useState("upcoming");
   const [calLoading, setCalLoading] = useState(false);
+  const [calMonthOffset, setCalMonthOffset] = useState(0);
   // Notifications
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [notifList, setNotifList] = useState([]);
@@ -2824,7 +2825,7 @@ export default function App() {
   }, []);
 
   useEffect(() => { if (screen === "profile" && LIVE) { loadFriends(); DB.fetchNotifPrefs().then(setNotifPrefs).catch(()=>{}); } }, [screen]);
-  useEffect(() => { if (screen === "calendar" && LIVE) loadCalendar(); }, [screen]);
+  useEffect(() => { if (screen === "calendar" && LIVE) { setCalMonthOffset(0); loadCalendar(); } }, [screen]);
   useEffect(() => {
     if (screen === "notifications" && LIVE) {
       (async () => { await loadNotifications(); try { await DB.markNotificationsSeen(); setNotifUnread(0); } catch {} })();
@@ -3254,8 +3255,10 @@ export default function App() {
               <EmptyState icon="📅" title="Nothing scheduled" body="Payment due dates, goal milestones, and open votes will show up here once you join or create a Sanduq." />
             ) : (() => {
               const now = new Date();
-              const cy = now.getFullYear(), cm = now.getMonth();
-              const monthName = now.toLocaleDateString(undefined,{month:"long",year:"numeric"});
+              const viewed = new Date(now.getFullYear(), now.getMonth()+calMonthOffset, 1);
+              const cy = viewed.getFullYear(), cm = viewed.getMonth();
+              const isCurrentMonth = cy===now.getFullYear() && cm===now.getMonth();
+              const monthName = viewed.toLocaleDateString(undefined,{month:"long",year:"numeric"});
               const firstDay = new Date(cy, cm, 1).getDay();
               const daysInMonth = new Date(cy, cm+1, 0).getDate();
               const kindColor = (k) => k==="due"?"#E8836F" : k==="vote"?C.purple : k==="milestone"?C.green : C.textMid;
@@ -3271,14 +3274,25 @@ export default function App() {
                 <>
                   {/* Month grid */}
                   <SurfaceCard>
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, fontWeight:700, color:C.text, marginBottom:14 }}>{monthName}</div>
+                    <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14 }}>
+                      <button onClick={()=>setCalMonthOffset(o=>o-1)} aria-label="Previous month" style={{ width:34, height:34, borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                      </button>
+                      <div style={{ display:"flex", flexDirection:"column", alignItems:"center" }}>
+                        <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, fontWeight:700, color:C.text }}>{monthName}</span>
+                        {!isCurrentMonth && <button onClick={()=>setCalMonthOffset(0)} style={{ background:"none", border:"none", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.green, marginTop:1 }}>Today</button>}
+                      </div>
+                      <button onClick={()=>setCalMonthOffset(o=>o+1)} aria-label="Next month" style={{ width:34, height:34, borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={C.textMid} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                      </button>
+                    </div>
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4, marginBottom:6 }}>
                       {["S","M","T","W","T","F","S"].map((d,i) => <div key={i} style={{ textAlign:"center", fontSize:10, fontWeight:600, color:C.textDim }}>{d}</div>)}
                     </div>
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:4 }}>
                       {Array.from({length:firstDay}).map((_,i)=><div key={"x"+i} />)}
                       {Array.from({length:daysInMonth}).map((_,i) => {
-                        const day=i+1; const kinds=dayHas[day]; const isToday=day===now.getDate();
+                        const day=i+1; const kinds=dayHas[day]; const isToday=isCurrentMonth && day===now.getDate();
                         const color = kinds ? kindColor([...kinds][0]) : null;
                         return (
                           <div key={i} style={{ aspectRatio:"1", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", borderRadius:8, background:kinds?`${color}22`:"transparent", border:isToday?`1px solid ${C.text}55`:kinds?`1px solid ${color}55`:"1px solid transparent" }}>
