@@ -263,16 +263,19 @@ function Pill({ label, color, bg }) {
   );
 }
 
-function SurfaceCard({ children, style={}, onClick }) {
+function SurfaceCard({ children, style={}, onClick, t=null }) {
+  const bg = t ? t.cardBg : C.surface;
+  const bd = t ? t.cardBorder : C.border;
   return (
     <div onClick={onClick} style={{
-      background:C.surface, border:`1px solid ${C.border}`, borderRadius:20,
+      background:bg, border:`1px solid ${bd}`, borderRadius:20,
       padding:18, marginBottom:12, cursor:onClick?"pointer":"default",
+      backdropFilter: t ? "blur(7px)" : "none", WebkitBackdropFilter: t ? "blur(7px)" : "none",
       transition:onClick?"transform .15s,border-color .15s":"none",
       ...style,
     }}
-    onMouseEnter={onClick?e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=C.border2}:null}
-    onMouseLeave={onClick?e=>{e.currentTarget.style.transform="";e.currentTarget.style.borderColor=C.border}:null}
+    onMouseEnter={onClick?e=>{e.currentTarget.style.transform="translateY(-2px)"}:null}
+    onMouseLeave={onClick?e=>{e.currentTarget.style.transform=""}:null}
     >{children}</div>
   );
 }
@@ -2122,6 +2125,21 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
 
   const g = detail?.group;
   const theme = resolveTheme(g?.theme);
+  // Themed "content" tokens — these replace the fixed C.* palette inside the
+  // group screen so cards, text, and tabs all wear the active theme.
+  const T = {
+    cardBg: theme.glass,
+    cardBorder: theme.glassBorder,
+    text: theme.glassText,
+    textMid: theme.glassSub,
+    textDim: theme.glassSub,
+    track: theme.track,
+    accent: theme.accent,
+    onAccent: theme.onAccent || "#fff",
+    // a slightly stronger surface for nested/inner chips
+    inner: theme.mode === "dark" ? "rgba(255,255,255,.08)" : "rgba(255,255,255,.45)",
+    divider: theme.track,
+  };
   const isTreasurer = g && g.treasurer_id === myId;
   const cycleKey = detail ? [...new Set(detail.contributions.map(c=>c.cycle))].sort().reverse()[0] : null;
   const cycleRows = detail ? detail.contributions.filter(c => c.cycle === cycleKey) : [];
@@ -2203,18 +2221,18 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         </div>
       )}
 
-      {/* Content sheet — light surface floating on the themed world for readability */}
-      <div style={{ position:"relative", zIndex:2, background:C.bg, borderTopLeftRadius:26, borderTopRightRadius:26, marginTop:18, minHeight:"60vh", boxShadow:"0 -8px 30px rgba(0,0,0,.12)" }}>
+      {/* Content sits directly on the themed world — fully immersive. */}
+      <div style={{ position:"relative", zIndex:2, marginTop:14, minHeight:"60vh" }}>
 
       {/* Tab bar */}
-      <div className="tab-scroll" style={{ display:"flex", gap:4, padding:"14px 12px 0", overflowX:"auto", overflowY:"hidden", borderBottom:`1px solid ${C.border}`, position:"sticky", top:0, zIndex:20, background:C.bg, WebkitOverflowScrolling:"touch" }}>
+      <div className="tab-scroll" style={{ display:"flex", gap:4, padding:"14px 12px 0", overflowX:"auto", overflowY:"hidden", borderBottom:`1px solid ${T.cardBorder}`, position:"sticky", top:0, zIndex:20, background:"transparent", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", WebkitOverflowScrolling:"touch" }}>
         {[["overview","Overview"],["payments","Payments"],["votes","Votes"],["members","Members"],["chat","Chat"]].map(([k,lbl]) => (
-          <button key={k} onClick={()=>{ setTab(k); if(k==="chat") setChatUnread(0); }} style={{ position:"relative", padding:"10px 16px 14px", background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:tab===k?700:500, color:tab===k?C.blue:C.textMid }}>
+          <button key={k} onClick={()=>{ setTab(k); if(k==="chat") setChatUnread(0); }} style={{ position:"relative", padding:"10px 16px 14px", background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:tab===k?700:500, color:tab===k?T.text:T.textMid }}>
             {lbl}
             {k==="chat" && chatUnread>0 && (
               <span style={{ marginLeft:6, minWidth:17, height:17, padding:"0 4px", borderRadius:9, background:C.red, color:"#fff", fontSize:10.5, fontWeight:700, display:"inline-flex", alignItems:"center", justifyContent:"center", verticalAlign:"middle" }}>{chatUnread>99?"99+":chatUnread}</span>
             )}
-            {tab===k && <div style={{ position:"absolute", bottom:-1, left:12, right:12, height:2, borderRadius:2, background:C.blue }} />}
+            {tab===k && <div style={{ position:"absolute", bottom:-1, left:12, right:12, height:2, borderRadius:2, background:T.accent }} />}
           </button>
         ))}
       </div>
@@ -2341,25 +2359,25 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         {/* ===== OVERVIEW TAB ===== */}
         {tab==="overview" && (<>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
-            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px" }}>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textDim, letterSpacing:1, textTransform:"uppercase" }}>Monthly Due</div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:C.text, marginTop:8, letterSpacing:-0.5 }}>${(g.monthly_cents/100).toLocaleString()}</div>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:4 }}>per member</div>
+            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px" }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Monthly Due</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:T.text, marginTop:8, letterSpacing:-0.5 }}>${(g.monthly_cents/100).toLocaleString()}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>per member</div>
             </div>
-            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px" }}>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textDim, letterSpacing:1, textTransform:"uppercase" }}>Next Payment</div>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:24, fontWeight:800, color:C.text, marginTop:8, letterSpacing:-0.5 }}>{nextDue.label}</div>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:4 }}>{nextDue.days} day{nextDue.days===1?"":"s"} away</div>
+            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px" }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Next Payment</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:24, fontWeight:800, color:T.text, marginTop:8, letterSpacing:-0.5 }}>{nextDue.label}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>{nextDue.days} day{nextDue.days===1?"":"s"} away</div>
             </div>
-            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px" }}>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textDim, letterSpacing:1, textTransform:"uppercase" }}>Active Votes</div>
+            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px" }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Active Votes</div>
               <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:openVotesCount>0?C.purpleBright:C.text, marginTop:8 }}>{openVotesCount}</div>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:4 }}>{openVotesCount>0?"need attention":"none open"}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>{openVotesCount>0?"need attention":"none open"}</div>
             </div>
-            <div style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px" }}>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:C.textDim, letterSpacing:1, textTransform:"uppercase" }}>Your Total</div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:C.text, marginTop:8, letterSpacing:-0.5 }}>${(myConfirmedCents/100).toLocaleString()}</div>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:4 }}>contributed</div>
+            <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px" }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Your Total</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:500, color:T.text, marginTop:8, letterSpacing:-0.5 }}>${(myConfirmedCents/100).toLocaleString()}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>contributed</div>
             </div>
           </div>
 
@@ -2367,13 +2385,13 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             <div key={m.member_id} style={{ display:"flex", gap:12, alignItems:"center", background:C.amberLt, border:`1px solid ${C.amber}44`, borderRadius:14, padding:"14px 16px", marginBottom:12 }}>
               <div style={{ width:30, height:30, borderRadius:"50%", background:C.amber, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, fontSize:16, fontWeight:800, color:"#FFFFFF" }}>!</div>
               <div>
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.text }}>{(m.profiles?.display_name)||"A member"} has missed {m.misses} payment{m.misses>1?"s":""}</div>
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:2 }}>{m.misses>=2?"One more miss triggers auto-removal with a pro-rata refund":"Catch-up owed before the next cycle"}</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:T.text }}>{(m.profiles?.display_name)||"A member"} has missed {m.misses} payment{m.misses>1?"s":""}</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:2 }}>{m.misses>=2?"One more miss triggers auto-removal with a pro-rata refund":"Catch-up owed before the next cycle"}</div>
               </div>
             </div>
           ))}
 
-          <SurfaceCard>
+          <SurfaceCard t={T}>
             <Eyebrow>Group Rules</Eyebrow>
             <div style={{ marginTop:10 }}>
               {[
@@ -2385,7 +2403,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                 <div key={i}>
                   <div style={{ display:"flex", gap:10, padding:"11px 0" }}>
                     <div style={{ width:6, height:6, borderRadius:"50%", background:catColor[0], marginTop:7, flexShrink:0 }} />
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.textMid, lineHeight:1.5 }}>{r}</div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.textMid, lineHeight:1.5 }}>{r}</div>
                   </div>
                   {i<arr.length-1 && <Divider />}
                 </div>
@@ -2397,13 +2415,13 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         {/* ===== PAYMENTS TAB: current cycle ===== */}
         {tab==="payments" && (<>
         {/* Current cycle — the two-key handshake, live */}
-        <SurfaceCard>
+        <SurfaceCard t={T}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
             <Eyebrow>{cycleKey ? new Date(cycleKey+"T00:00:00").toLocaleDateString(undefined,{month:"long",year:"numeric"}) : "Current cycle"}</Eyebrow>
             {isTreasurer && <Pill label="You're treasurer" color={C.blue} bg={C.blueLt} />}
           </div>
           {cycleRows.length === 0 && (
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, padding:"10px 0" }}>No contribution rows yet for this cycle.</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textMid, padding:"10px 0" }}>No contribution rows yet for this cycle.</div>
           )}
           {cycleRows.map((row, i) => {
             const p = profileOf(row.member_id);
@@ -2417,18 +2435,18 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                     {(p?.display_name || "?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase()}
                   </div>
                   <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{p?.display_name || "Member"}{mineRow ? " · you" : ""}{row.member_id === g.treasurer_id ? "  💼" : ""}</div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>{p?.display_name || "Member"}{mineRow ? " · you" : ""}{row.member_id === g.treasurer_id ? "  💼" : ""}</div>
                     <Pill label={s.label} color={s.color} bg={s.bg} />
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", gap:6, alignItems:"flex-end", flexShrink:0 }}>
-                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color:C.textMid }}>${(row.amount_cents/100).toLocaleString()}</div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:13, color:T.textMid }}>${(row.amount_cents/100).toLocaleString()}</div>
                     {mineRow && (row.status === "unpaid" || row.status === "missed") && (
                       <button disabled={busy} onClick={()=>act(()=>DB.rpc.markSent(row.id), row.id)} style={{ padding:"8px 13px", borderRadius:9, background:C.green, border:"none", fontSize:12, fontWeight:700, color:"#FFFFFF", minHeight:34, opacity:busy?0.6:1 }}>{busy?"…":"I've sent it"}</button>
                     )}
                     {mineRow && row.status === "disputed" && (
                       <div style={{ display:"flex", gap:6 }}>
                         <button disabled={busy} onClick={()=>act(()=>DB.rpc.markSent(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:C.amber, border:"none", fontSize:11.5, fontWeight:700, color:"#FFFFFF" }}>Re-flag sent</button>
-                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.resetUnpaid(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:"none", border:`1px solid ${C.border2}`, fontSize:11.5, fontWeight:600, color:C.textMid }}>I'll resend</button>
+                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.resetUnpaid(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:"none", border:`1px solid ${T.cardBorder}`, fontSize:11.5, fontWeight:600, color:T.textMid }}>I'll resend</button>
                       </div>
                     )}
                     {isTreasurer && !mineRow && row.status === "marked_sent" && (
@@ -2440,7 +2458,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                     {isTreasurer && !mineRow && row.status === "disputed" && (
                       <div style={{ display:"flex", gap:6 }}>
                         <button disabled={busy} onClick={()=>act(()=>DB.rpc.confirmReceipt(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:C.green, border:"none", fontSize:11.5, fontWeight:700, color:"#FFFFFF" }}>It arrived</button>
-                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.resetUnpaid(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:"none", border:`1px solid ${C.border2}`, fontSize:11.5, fontWeight:600, color:C.textMid }}>Mark unpaid</button>
+                        <button disabled={busy} onClick={()=>act(()=>DB.rpc.resetUnpaid(row.id), row.id)} style={{ padding:"7px 11px", borderRadius:9, background:"none", border:`1px solid ${T.cardBorder}`, fontSize:11.5, fontWeight:600, color:T.textMid }}>Mark unpaid</button>
                       </div>
                     )}
                   </div>
@@ -2450,14 +2468,14 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             );
           })}
           {isTreasurer && missingRows > 0 && (
-            <button onClick={()=>act(()=>DB.openCycle(group.id), "cycle")} style={{ width:"100%", marginTop:10, padding:12, borderRadius:12, background:C.surface2, border:`1px solid ${C.border2}`, fontSize:13, fontWeight:600, color:C.text }}>Open this month's cycle for {missingRows} member{missingRows>1?"s":""}</button>
+            <button onClick={()=>act(()=>DB.openCycle(group.id), "cycle")} style={{ width:"100%", marginTop:10, padding:12, borderRadius:12, background:T.inner, border:`1px solid ${T.cardBorder}`, fontSize:13, fontWeight:600, color:T.text }}>Open this month's cycle for {missingRows} member{missingRows>1?"s":""}</button>
           )}
         </SurfaceCard>
         </>)}
 
         {/* ===== MEMBERS TAB ===== */}
         {tab==="members" && (
-        <SurfaceCard>
+        <SurfaceCard t={T}>
           <Eyebrow>Members · {detail.members.filter(m=>!m.removed).length}</Eyebrow>
           <div style={{ marginTop:8 }}>
             {detail.members.filter(m=>!m.removed).map((m, i, arr) => {
@@ -2469,7 +2487,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                   <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0" }}>
                     <div style={{ width:38, height:38, borderRadius:"50%", background:prof.avatar_color||C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#FFFFFF" }}>{(prof.display_name||"?").slice(0,2).toUpperCase()}</div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{prof.display_name||"Member"}{isMe?" (you)":""}</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>{prof.display_name||"Member"}{isMe?" (you)":""}</div>
                       {m.catchup_owed_cents > 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.amber, marginTop:1 }}>Catch-up owed: ${(m.catchup_owed_cents/100).toLocaleString()}</div>}
                     </div>
                     {isTreas && <Pill label="Treasurer" color={C.blue} bg={C.blueLt} />}
@@ -2486,33 +2504,33 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         {/* ===== PAYMENTS TAB: expenses ===== */}
         {tab==="payments" && (<>
         {/* Expenses */}
-        <SurfaceCard>
+        <SurfaceCard t={T}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <Eyebrow>Expenses</Eyebrow>
             {isTreasurer && !showExpense && <button onClick={()=>setShowExpense(true)} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.blue, background:"none", border:"none", cursor:"pointer" }}>+ Log expense</button>}
           </div>
 
           {showExpense && (
-            <div style={{ marginTop:10, marginBottom:8, padding:14, background:C.surface2, borderRadius:12, border:`1px solid ${C.border}` }}>
-              <input value={expDesc} onChange={e=>setExpDesc(e.target.value)} placeholder="What was it for?" style={{ width:"100%", marginBottom:8, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text }} />
+            <div style={{ marginTop:10, marginBottom:8, padding:14, background:T.inner, borderRadius:12, border:`1px solid ${T.cardBorder}` }}>
+              <input value={expDesc} onChange={e=>setExpDesc(e.target.value)} placeholder="What was it for?" style={{ width:"100%", marginBottom:8, background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.text }} />
               <div style={{ display:"flex", gap:8 }}>
-                <input value={expAmt} onChange={e=>setExpAmt(e.target.value)} inputMode="decimal" placeholder="Amount $" style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Mono',monospace", fontSize:14, color:C.text }} />
+                <input value={expAmt} onChange={e=>setExpAmt(e.target.value)} inputMode="decimal" placeholder="Amount $" style={{ flex:1, background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Mono',monospace", fontSize:14, color:T.text }} />
                 <button onClick={logExpense} disabled={!expDesc.trim()||!expAmt||expBusy} style={{ padding:"0 16px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", opacity:(!expDesc.trim()||!expAmt||expBusy)?0.5:1 }}>{expBusy?"…":"Log"}</button>
               </div>
               {expErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:8 }}>{expErr}</div>}
-              <button onClick={()=>{ setShowExpense(false); setExpDesc(""); setExpAmt(""); setExpErr(null); }} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, background:"none", border:"none", cursor:"pointer" }}>Cancel</button>
+              <button onClick={()=>{ setShowExpense(false); setExpDesc(""); setExpAmt(""); setExpErr(null); }} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, background:"none", border:"none", cursor:"pointer" }}>Cancel</button>
             </div>
           )}
 
           {detail.expenses.length === 0 ? (
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textDim, padding:"10px 0", textAlign:"center" }}>No expenses logged yet.</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textDim, padding:"10px 0", textAlign:"center" }}>No expenses logged yet.</div>
           ) : (
             <div style={{ marginTop:8 }}>
               {detail.expenses.map((ex, i, arr) => (
                 <div key={ex.id}>
                   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0" }}>
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text }}>{ex.description}</div>
-                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, fontWeight:500, color:C.text }}>${(ex.amount_cents/100).toLocaleString()}</div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.text }}>{ex.description}</div>
+                    <div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, fontWeight:500, color:T.text }}>${(ex.amount_cents/100).toLocaleString()}</div>
                   </div>
                   {i<arr.length-1 && <Divider />}
                 </div>
@@ -2524,31 +2542,31 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
 
         {/* ===== VOTES TAB ===== */}
         {tab==="votes" && (
-        <SurfaceCard>
+        <SurfaceCard t={T}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
             <Eyebrow>Votes</Eyebrow>
             {!showPropose && <button onClick={()=>setShowPropose(true)} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:600, color:C.blue, background:"none", border:"none", cursor:"pointer" }}>+ Propose</button>}
           </div>
 
           {showPropose && (
-            <div style={{ marginTop:10, marginBottom:10, padding:14, background:C.surface2, borderRadius:12, border:`1px solid ${C.border}` }}>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginBottom:8 }}>Propose a change. It passes when a majority of members vote yes.</div>
+            <div style={{ marginTop:10, marginBottom:10, padding:14, background:T.inner, borderRadius:12, border:`1px solid ${T.cardBorder}` }}>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, marginBottom:8 }}>Propose a change. It passes when a majority of members vote yes.</div>
               <div style={{ display:"flex", gap:7, marginBottom:10 }}>
                 {[["monthly","Monthly amount"],["goal","Goal"]].map(([k,lbl]) => (
                   <button key={k} onClick={()=>setVoteKind(k)} style={{ flex:1, padding:"9px 0", borderRadius:9, background:voteKind===k?C.blue:C.surface, border:`1px solid ${voteKind===k?C.blue:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:voteKind===k?"#fff":C.textMid, cursor:"pointer" }}>{lbl}</button>
                 ))}
               </div>
               <div style={{ display:"flex", gap:8 }}>
-                <input value={voteVal} onChange={e=>setVoteVal(e.target.value)} inputMode="decimal" placeholder={voteKind==="monthly"?`New monthly $ (now $${(g.monthly_cents/100).toLocaleString()})`:`New goal $ (now $${(g.goal_cents/100).toLocaleString()})`} style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text }} />
+                <input value={voteVal} onChange={e=>setVoteVal(e.target.value)} inputMode="decimal" placeholder={voteKind==="monthly"?`New monthly $ (now $${(g.monthly_cents/100).toLocaleString()})`:`New goal $ (now $${(g.goal_cents/100).toLocaleString()})`} style={{ flex:1, background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:10, padding:"11px 13px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.text }} />
                 <button onClick={propose} disabled={!voteVal||voteBusy} style={{ padding:"0 16px", borderRadius:10, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", opacity:(!voteVal||voteBusy)?0.5:1 }}>{voteBusy?"…":"Propose"}</button>
               </div>
               {voteErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:8 }}>{voteErr}</div>}
-              <button onClick={()=>{ setShowPropose(false); setVoteVal(""); setVoteErr(null); }} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, background:"none", border:"none", cursor:"pointer" }}>Cancel</button>
+              <button onClick={()=>{ setShowPropose(false); setVoteVal(""); setVoteErr(null); }} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, background:"none", border:"none", cursor:"pointer" }}>Cancel</button>
             </div>
           )}
 
           {detail.votes.length === 0 && !showPropose ? (
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textDim, padding:"10px 0", textAlign:"center" }}>No votes yet. Propose a change to the monthly amount or goal.</div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textDim, padding:"10px 0", textAlign:"center" }}>No votes yet. Propose a change to the monthly amount or goal.</div>
           ) : (
             <div style={{ marginTop:8 }}>
               {detail.votes.map((v, i, arr) => {
@@ -2562,15 +2580,15 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                   <div key={v.id}>
                     <div style={{ padding:"12px 0" }}>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", gap:10 }}>
-                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{v.title}</div>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>{v.title}</div>
                         <Pill label={v.status==="executed"?"Passed":v.status==="open"?"Open":v.status==="failed"?"Failed":v.status} color={v.status==="executed"?C.green:v.status==="open"?C.blue:C.textMid} bg={v.status==="executed"?C.greenLt:v.status==="open"?C.blueLt:C.surface2} />
                       </div>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:4 }}>{yes} yes · {no} no · {needed} needed to pass</div>
+                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, marginTop:4 }}>{yes} yes · {no} no · {needed} needed to pass</div>
                       {open && !iVoted && (
                         <div style={{ display:"flex", gap:8, marginTop:10 }}>
                           <button onClick={()=>castBallot(v.id,"yes")} disabled={ballotBusy===v.id} style={{ flex:1, padding:10, borderRadius:10, background:C.green, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#FFFFFF", cursor:"pointer" }}>Yes</button>
-                          <button onClick={()=>castBallot(v.id,"no")} disabled={ballotBusy===v.id} style={{ flex:1, padding:10, borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.text, cursor:"pointer" }}>No</button>
-                          <button onClick={()=>castBallot(v.id,"abstain")} disabled={ballotBusy===v.id} style={{ padding:"10px 14px", borderRadius:10, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Abstain</button>
+                          <button onClick={()=>castBallot(v.id,"no")} disabled={ballotBusy===v.id} style={{ flex:1, padding:10, borderRadius:10, background:T.inner, border:`1px solid ${T.cardBorder}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:T.text, cursor:"pointer" }}>No</button>
+                          <button onClick={()=>castBallot(v.id,"abstain")} disabled={ballotBusy===v.id} style={{ padding:"10px 14px", borderRadius:10, background:T.inner, border:`1px solid ${T.cardBorder}`, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:T.textMid, cursor:"pointer" }}>Abstain</button>
                         </div>
                       )}
                       {open && iVoted && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.green, marginTop:8 }}>✓ You voted</div>}
@@ -2587,9 +2605,9 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         {/* ===== MEMBERS TAB: invite ===== */}
         {tab==="members" && (<>
         {/* Invite link */}
-        <SurfaceCard>
+        <SurfaceCard t={T}>
           <Eyebrow>Invite</Eyebrow>
-          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, lineHeight:1.5, marginBottom:10 }}>
+          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textMid, lineHeight:1.5, marginBottom:10 }}>
             {g.join_policy === "closed"
               ? "This group is locked, so new members can't join."
               : "Share the code or link. Friends enter the code on their home screen, or tap the link to join instantly."}
@@ -2600,8 +2618,8 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             return (
               <>
                 {code && (
-                  <div style={{ background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"14px 16px", marginBottom:8, textAlign:"center" }}>
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textDim, letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>Join code</div>
+                  <div style={{ background:T.inner, border:`1px solid ${T.cardBorder}`, borderRadius:12, padding:"14px 16px", marginBottom:8, textAlign:"center" }}>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:T.textDim, letterSpacing:1, textTransform:"uppercase", marginBottom:6 }}>Join code</div>
                     <div style={{ display:"flex", gap:10, alignItems:"center", justifyContent:"center" }}>
                       <span style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:600, letterSpacing:4, color:C.green }}>{code}</span>
                       <button onClick={()=>{ navigator.clipboard?.writeText(code); setCodeCopied2(true); setTimeout(()=>setCodeCopied2(false),1500); }} style={{ width:34, height:34, borderRadius:9, background:codeCopied2?C.greenLt:C.surface, border:`1px solid ${codeCopied2?C.green:C.border}`, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer" }}>
@@ -2610,8 +2628,8 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                     </div>
                   </div>
                 )}
-                <div style={{ display:"flex", gap:8, alignItems:"center", background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"11px 13px", marginBottom:8 }}>
-                  <span style={{ flex:1, fontFamily:"'DM Mono',monospace", fontSize:11.5, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{link}</span>
+                <div style={{ display:"flex", gap:8, alignItems:"center", background:T.inner, border:`1px solid ${T.cardBorder}`, borderRadius:12, padding:"11px 13px", marginBottom:8 }}>
+                  <span style={{ flex:1, fontFamily:"'DM Mono',monospace", fontSize:11.5, color:T.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{link}</span>
                   <button onClick={()=>{ navigator.clipboard?.writeText(link); setCopied(true); setTimeout(()=>setCopied(false),1500); }} style={{ padding:"6px 12px", borderRadius:8, background:copied?C.greenLt:C.surface, border:`1px solid ${copied?C.green:C.border}`, fontSize:12, fontWeight:700, color:copied?C.green:C.textMid }}>{copied?"Copied ✓":"Copy"}</button>
                 </div>
                 <button onClick={async ()=>{
@@ -2623,28 +2641,28 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                 }} style={{ width:"100%", padding:12, borderRadius:12, background:group.bar, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:"#FFFFFF", cursor:"pointer" }}>Share invite</button>
 
                 {isTreasurer && (
-                  <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${C.border}` }}>
+                  <div style={{ marginTop:14, paddingTop:14, borderTop:`1px solid ${T.divider}` }}>
                     {!showFriendPicker ? (
-                      <button onClick={openFriendPicker} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:12, borderRadius:12, background:C.surface2, border:`1px solid ${C.border2}`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text, cursor:"pointer" }}>
+                      <button onClick={openFriendPicker} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:12, borderRadius:12, background:T.inner, border:`1px solid ${T.cardBorder}`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text, cursor:"pointer" }}>
                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={C.text} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
                         Add a friend directly
                       </button>
                     ) : (
                       <div>
-                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginBottom:8 }}>Tap a friend to add them to this Sanduq.</div>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, marginBottom:8 }}>Tap a friend to add them to this Sanduq.</div>
                         {friendList.length === 0 ? (
-                          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textDim, textAlign:"center", padding:"10px 0" }}>No friends to add yet. Connect with friends on your Profile first.</div>
+                          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textDim, textAlign:"center", padding:"10px 0" }}>No friends to add yet. Connect with friends on your Profile first.</div>
                         ) : (
                           friendList.map(f => (
                             <div key={f.other_id} style={{ display:"flex", alignItems:"center", gap:12, padding:"8px 0" }}>
                               <div style={{ width:36, height:36, borderRadius:"50%", background:f.avatar_color, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#FFFFFF" }}>{(f.display_name||"?").slice(0,2).toUpperCase()}</div>
-                              <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{f.display_name}</div>
+                              <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>{f.display_name}</div>
                               <button onClick={()=>inviteFriend(f.other_id)} disabled={invitingId===f.other_id} style={{ padding:"7px 14px", borderRadius:9, background:C.blue, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer", opacity:invitingId===f.other_id?0.5:1 }}>{invitingId===f.other_id?"Adding…":"Add"}</button>
                             </div>
                           ))
                         )}
                         {inviteFriendErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.red, marginTop:6 }}>{inviteFriendErr}</div>}
-                        <button onClick={()=>setShowFriendPicker(false)} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, background:"none", border:"none", cursor:"pointer" }}>Done</button>
+                        <button onClick={()=>setShowFriendPicker(false)} style={{ marginTop:8, fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, background:"none", border:"none", cursor:"pointer" }}>Done</button>
                       </div>
                     )}
                   </div>
@@ -2658,14 +2676,14 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         {/* ===== PAYMENTS TAB: audit ===== */}
         {tab==="payments" && (<>
         {/* Audit trail */}
-        <SurfaceCard>
+        <SurfaceCard t={T}>
           <Eyebrow>Audit trail · append-only</Eyebrow>
-          {detail.audit.length === 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, padding:"8px 0" }}>Events will appear here as money moves.</div>}
+          {detail.audit.length === 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textMid, padding:"8px 0" }}>Events will appear here as money moves.</div>}
           {detail.audit.slice(0,10).map((a,i) => (
             <div key={a.id}>
               <div style={{ display:"flex", justifyContent:"space-between", gap:10, padding:"9px 0" }}>
-                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11.5, color:C.textMid }}>{a.action} · {a.table_name}</span>
-                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, color:C.textDim, flexShrink:0 }}>{new Date(a.at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}</span>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11.5, color:T.textMid }}>{a.action} · {a.table_name}</span>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, color:T.textDim, flexShrink:0 }}>{new Date(a.at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}</span>
               </div>
               {i < Math.min(9, detail.audit.length-1) && <Divider />}
             </div>
