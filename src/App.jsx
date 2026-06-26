@@ -55,25 +55,25 @@ const C = {
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');`;
 
 // ── Data ──────────────────────────────────────────────────────
-const ME = { id: 1, name: "Jordan K.", initials: "JK", color: "#3B8EF5" };
+const ME = { id: 1, name: "Demo User", initials: "DU", color: "#3B8EF5" };
 const MCOLS = ["#3B8EF5","#5AC8FA","#8B7BF0","#F5A623","#E07AC0","#F0556B","#3DD6D0","#F0824D","#A99BF5","#60D9FA"];
 
 const ALL_MEMBERS = {
   1: [
-    { id:1, name:"Jordan K.", initials:"JK", status:"active", missed:0, contributed:1200, joined:"Jan 2025", isMe:true, color:MCOLS[0] },
+    { id:1, name:"Demo User", initials:"DU", status:"active", missed:0, contributed:1200, joined:"Jan 2025", isMe:true, color:MCOLS[0] },
     { id:2, name:"Marcus T.", initials:"MT", status:"active", missed:1, contributed:1100, joined:"Jan 2025", color:MCOLS[1] },
     { id:3, name:"Priya R.",  initials:"PR", status:"active", missed:0, contributed:1200, joined:"Jan 2025", color:MCOLS[4] },
     { id:4, name:"Devon A.",  initials:"DA", status:"warned", missed:2, contributed:900,  joined:"Feb 2025", color:MCOLS[3] },
     { id:5, name:"Sofia L.",  initials:"SL", status:"active", missed:0, contributed:1200, joined:"Jan 2025", color:MCOLS[6] },
   ],
   2: [
-    { id:1, name:"Jordan K.", initials:"JK", status:"active", missed:0, contributed:1200, joined:"Mar 2025", isMe:true, color:MCOLS[0] },
+    { id:1, name:"Demo User", initials:"DU", status:"active", missed:0, contributed:1200, joined:"Mar 2025", isMe:true, color:MCOLS[0] },
     { id:6, name:"Sam W.",    initials:"SW", status:"active", missed:0, contributed:800, joined:"Mar 2025", color:MCOLS[5] },
     { id:7, name:"Chloe B.",  initials:"CB", status:"active", missed:0, contributed:800, joined:"Mar 2025", color:MCOLS[6] },
     { id:8, name:"Ravi M.",   initials:"RM", status:"active", missed:0, contributed:800, joined:"Apr 2025", color:MCOLS[7] },
   ],
   3: [
-    { id:1,  name:"Jordan K.", initials:"JK", status:"active", missed:0, contributed:300, joined:"May 2025", isMe:true, color:MCOLS[0] },
+    { id:1,  name:"Demo User", initials:"DU", status:"active", missed:0, contributed:300, joined:"May 2025", isMe:true, color:MCOLS[0] },
     { id:9,  name:"Harry P.",  initials:"HP", status:"active", missed:0, contributed:300, joined:"May 2025", color:MCOLS[8] },
     { id:10, name:"Mei L.",    initials:"ML", status:"active", missed:0, contributed:300, joined:"May 2025", color:MCOLS[4] },
     { id:11, name:"Teo G.",    initials:"TG", status:"active", missed:0, contributed:300, joined:"May 2025", color:MCOLS[9] },
@@ -122,7 +122,7 @@ const PAYMENTS_BY_GROUP = {
 
 const VOTES_BY_GROUP = {
   1: [
-    { id:1, type:"amendment", title:"Increase monthly contribution to $100", proposedBy:"Jordan K.", deadline:"3 days left", yes:3, no:1, total:5, userVoted:false },
+    { id:1, type:"amendment", title:"Increase monthly contribution to $100", proposedBy:"Demo User", deadline:"3 days left", yes:3, no:1, total:5, userVoted:false },
     { id:2, type:"payout",    title:"Release full pot to Sam for the party", proposedBy:"Marcus T.", deadline:"7 days left", yes:2, no:0, total:5, userVoted:true, userChoice:"yes" },
   ],
   2: [
@@ -132,7 +132,7 @@ const VOTES_BY_GROUP = {
 };
 
 const ACTIVITY_FEED = [
-  { id:1, icon:"✓", title:"Payment confirmed",      body:"Jordan confirmed your payment of $80.",          time:"2h ago",   read:false, type:"payment",  group:"Sam's Birthday" },
+  { id:1, icon:"✓", title:"Payment confirmed",      body:"Marcus confirmed your payment of $80.",          time:"2h ago",   read:false, type:"payment",  group:"Sam's Birthday" },
   { id:2, icon:"↑", title:"New vote opened",        body:"Mei proposed moving Harry's party date.",         time:"Yesterday",read:false, type:"vote",     group:"Harry's Graduation" },
   { id:3, icon:"!",  title:"Payment due soon",      body:"$200 to Apartment Deposit due in 16 days.",      time:"Jun 1",    read:false, type:"reminder", group:"Apartment Deposit" },
   { id:4, icon:"⚠", title:"Devon missed a payment", body:"2 of 3 allowed misses in Sam's Birthday.",        time:"Jun 1",    read:true,  type:"warning",  group:"Sam's Birthday" },
