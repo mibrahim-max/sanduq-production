@@ -1854,7 +1854,7 @@ function ChatPanel({ groupId, myId, onRead }) {
   const endRef = useRef(null);
 
   async function load() {
-    try { const m = await DB.fetchMessages(groupId); setMsgs(m); }
+    try { if (DB.fetchMessages) { const m = await DB.fetchMessages(groupId); setMsgs(m || []); } }
     catch (e) { /* keep prior */ }
     finally { setLoaded(true); }
   }
@@ -1862,9 +1862,10 @@ function ChatPanel({ groupId, myId, onRead }) {
   useEffect(() => {
     load();
     // Mark read on open, and tell the parent to clear the badge.
-    DB.markChatRead(groupId).then(()=>{ onRead && onRead(); }).catch(()=>{});
-    const unsub = DB.subscribeToMessages(groupId, () => { load(); DB.markChatRead(groupId).catch(()=>{}); });
-    return unsub;
+    try { DB.markChatRead && DB.markChatRead(groupId).then(()=>{ onRead && onRead(); }).catch(()=>{}); } catch {}
+    let unsub = () => {};
+    try { if (DB.subscribeToMessages) unsub = DB.subscribeToMessages(groupId, () => { load(); try { DB.markChatRead && DB.markChatRead(groupId).catch(()=>{}); } catch {} }); } catch {}
+    return () => { try { unsub(); } catch {} };
   }, [groupId]);
 
   // Auto-scroll to newest whenever messages change.
@@ -2081,7 +2082,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
 
   async function loadChatUnread() {
     if (tab === "chat") { setChatUnread(0); return; }
-    try { const u = await DB.fetchChatUnread(); setChatUnread(u[group.id] || 0); }
+    try { if (DB.fetchChatUnread) { const u = await DB.fetchChatUnread(); setChatUnread(u[group.id] || 0); } }
     catch {}
   }
 
@@ -2090,8 +2091,9 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
     loadChatUnread();
     const unsub = DB.subscribeToGroup(group.id, load);
     // Live-update the unread badge when a message lands and we're not on the chat tab.
-    const unsubMsg = DB.subscribeToMessages(group.id, () => { if (tab !== "chat") loadChatUnread(); });
-    return () => { unsub(); unsubMsg(); };
+    let unsubMsg = () => {};
+    try { if (DB.subscribeToMessages) unsubMsg = DB.subscribeToMessages(group.id, () => { if (tab !== "chat") loadChatUnread(); }); } catch {}
+    return () => { try { unsub(); } catch {} try { unsubMsg(); } catch {} };
   }, [group.id]);
 
   async function act(fn, id) {
