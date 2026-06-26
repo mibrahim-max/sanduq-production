@@ -81,8 +81,8 @@ const ALL_MEMBERS = {
 };
 
 const SANDUQS = [
-  { id:1, name:"Morocco Trip",        goal:12000, pot:5600, monthly:250, nextDue:"Jun 1", daysLeft:12, myStatus:"paid",   alerts:1, openVotes:2, started:"Jan 2025", bar:C.blue,    cat:"Travel", emoji:"🌍", scene:"morocco",    exitPolicy:"vote",   treasurerId:1, joinPolicy:"catchup", monthsIn:5 },
-  { id:2, name:"Sam's Birthday Party",goal:3600,  pot:3600, monthly:200, nextDue:"—",     daysLeft:0,  myStatus:"paid",   alerts:0, openVotes:0, started:"Mar 2025", bar:C.purple,  cat:"Events", emoji:"🎉", scene:"birthday",   exitPolicy:"pot",    treasurerId:1, joinPolicy:"closed",  monthsIn:3 },
+  { id:1, name:"Sam's Birthday",      goal:400,   pot:240,  monthly:80,  nextDue:"Jul 1", daysLeft:12, myStatus:"paid",   alerts:1, openVotes:2, started:"May 2026", bar:C.blue,    cat:"Events", emoji:"🎉", scene:"birthday",   exitPolicy:"vote",   treasurerId:1, joinPolicy:"catchup", monthsIn:1 },
+  { id:2, name:"Apartment Deposit",   goal:3600,  pot:3600, monthly:200, nextDue:"—",     daysLeft:0,  myStatus:"paid",   alerts:0, openVotes:0, started:"Mar 2026", bar:C.purple,  cat:"Other",  emoji:"🏠", scene:"birthday",   exitPolicy:"pot",    treasurerId:1, joinPolicy:"closed",  monthsIn:3 },
   { id:3, name:"Harry's Graduation",  goal:2000,  pot:600,  monthly:100, nextDue:"Jun 1", daysLeft:12, myStatus:"unpaid", alerts:0, openVotes:1, started:"May 2025", bar:C.cyan,    cat:"Events", emoji:"🎓", scene:"graduation", exitPolicy:"refund", treasurerId:9, joinPolicy:"prorata", monthsIn:1 },
 ];
 
@@ -100,11 +100,11 @@ const JOIN_POLICY_LABELS = {
 
 const PAYMENTS_BY_GROUP = {
   1: [
-    { id:1, member:ALL_MEMBERS[1][0], amount:250, status:"confirmed",  paidAt:"Jun 1" },
-    { id:2, member:ALL_MEMBERS[1][1], amount:250, status:"unpaid",     paidAt:null },
-    { id:3, member:ALL_MEMBERS[1][2], amount:250, status:"confirmed",  paidAt:"Jun 1" },
-    { id:4, member:ALL_MEMBERS[1][3], amount:250, status:"missed",     paidAt:null },
-    { id:5, member:ALL_MEMBERS[1][4], amount:250, status:"confirmed",  paidAt:"Jun 1" },
+    { id:1, member:ALL_MEMBERS[1][0], amount:80, status:"confirmed",  paidAt:"Jun 1" },
+    { id:2, member:ALL_MEMBERS[1][1], amount:80, status:"unpaid",     paidAt:null },
+    { id:3, member:ALL_MEMBERS[1][2], amount:80, status:"confirmed",  paidAt:"Jun 1" },
+    { id:4, member:ALL_MEMBERS[1][3], amount:80, status:"missed",     paidAt:null },
+    { id:5, member:ALL_MEMBERS[1][4], amount:80, status:"confirmed",  paidAt:"Jun 1" },
   ],
   2: [
     { id:1, member:ALL_MEMBERS[2][0], amount:200, status:"confirmed", paidAt:"Jun 1" },
@@ -122,21 +122,21 @@ const PAYMENTS_BY_GROUP = {
 
 const VOTES_BY_GROUP = {
   1: [
-    { id:1, type:"amendment", title:"Increase monthly contribution to $300", proposedBy:"Jordan K.", deadline:"3 days left", yes:3, no:1, total:5, userVoted:false },
-    { id:2, type:"payout",    title:"Release full pot to Priya (trip organizer)", proposedBy:"Marcus T.", deadline:"7 days left", yes:2, no:0, total:5, userVoted:true, userChoice:"yes" },
+    { id:1, type:"amendment", title:"Increase monthly contribution to $100", proposedBy:"Jordan K.", deadline:"3 days left", yes:3, no:1, total:5, userVoted:false },
+    { id:2, type:"payout",    title:"Release full pot to Sam for the party", proposedBy:"Marcus T.", deadline:"7 days left", yes:2, no:0, total:5, userVoted:true, userChoice:"yes" },
   ],
   2: [
-    { id:1, type:"payout", title:"Release full pot to Sam W. for party costs", proposedBy:"Chloe B.", deadline:"Passed Jun 4", yes:3, no:0, total:4, userVoted:true, userChoice:"yes" },
+    { id:1, type:"payout", title:"Release full pot to cover the deposit", proposedBy:"Chloe B.", deadline:"Passed Jun 4", yes:3, no:0, total:4, userVoted:true, userChoice:"yes" },
   ],
   3: [{ id:1, type:"amendment", title:"Move party date to July 12th", proposedBy:"Mei L.", deadline:"5 days left", yes:1, no:0, total:4, userVoted:false }],
 };
 
 const ACTIVITY_FEED = [
-  { id:1, icon:"✓", title:"Payment confirmed",      body:"Jordan confirmed your May payment of $250.",      time:"2h ago",   read:false, type:"payment",  group:"Morocco Trip" },
+  { id:1, icon:"✓", title:"Payment confirmed",      body:"Jordan confirmed your payment of $80.",          time:"2h ago",   read:false, type:"payment",  group:"Sam's Birthday" },
   { id:2, icon:"↑", title:"New vote opened",        body:"Mei proposed moving Harry's party date.",         time:"Yesterday",read:false, type:"vote",     group:"Harry's Graduation" },
-  { id:3, icon:"!",  title:"Payment due soon",      body:"$200 to Sam's Birthday Party due in 16 days.",    time:"Jun 1",    read:false, type:"reminder", group:"Sam's Birthday Party" },
-  { id:4, icon:"⚠", title:"Devon missed a payment", body:"2 of 3 allowed misses in Morocco Trip.",          time:"Jun 1",    read:true,  type:"warning",  group:"Morocco Trip" },
-  { id:5, icon:"$", title:"Marcus marked payment",  body:"Confirm when you receive $250.",                  time:"May 28",   read:true,  type:"payment",  group:"Morocco Trip" },
+  { id:3, icon:"!",  title:"Payment due soon",      body:"$200 to Apartment Deposit due in 16 days.",      time:"Jun 1",    read:false, type:"reminder", group:"Apartment Deposit" },
+  { id:4, icon:"⚠", title:"Devon missed a payment", body:"2 of 3 allowed misses in Sam's Birthday.",        time:"Jun 1",    read:true,  type:"warning",  group:"Sam's Birthday" },
+  { id:5, icon:"$", title:"Marcus marked payment",  body:"Confirm when you receive $80.",                  time:"May 28",   read:true,  type:"payment",  group:"Sam's Birthday" },
   { id:6, icon:"+", title:"Teo joined group",       body:"Welcome Teo to Harry's Graduation.",              time:"May 20",   read:true,  type:"member",   group:"Harry's Graduation" },
 ];
 
@@ -201,11 +201,11 @@ const DM_THREADS = [
 
 const CALENDAR_EVENTS = [
   { id:1, type:"due",  groupId:3, group:"Harry's Graduation",   title:"Payment due · $100",          date:"Jun 1", color:C.cyan },
-  { id:2, type:"due",  groupId:1, group:"Morocco Trip",         title:"Payment due · $250",          date:"Jun 1", color:C.blue },
-  { id:3, type:"due",  groupId:2, group:"Sam's Birthday Party", title:"Payment due · $200",          date:"Jun 5", color:C.purple },
-  { id:4, type:"goal", groupId:2, group:"Sam's Birthday Party", title:"Goal reached (projected)",    date:"Aug 5", color:C.purple },
+  { id:2, type:"due",  groupId:1, group:"Sam's Birthday",         title:"Payment due · $80",           date:"Jul 1", color:C.blue },
+  { id:3, type:"due",  groupId:2, group:"Apartment Deposit", title:"Payment due · $200",          date:"Jun 5", color:C.purple },
+  { id:4, type:"goal", groupId:2, group:"Apartment Deposit", title:"Goal reached (projected)",    date:"Aug 5", color:C.purple },
   { id:5, type:"goal", groupId:3, group:"Harry's Graduation",   title:"Goal reached (projected)",    date:"Oct 1", color:C.cyan },
-  { id:6, type:"goal", groupId:1, group:"Morocco Trip",         title:"Goal reached (projected)",    date:"Mar 1 '26", color:C.blue },
+  { id:6, type:"goal", groupId:1, group:"Sam's Birthday",         title:"Goal reached (projected)",    date:"Aug 1 '26", color:C.blue },
 ];
 
 const NOTIF_SETTINGS = [
@@ -1325,7 +1325,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
 
             <div style={{ background:C.purpleLt, border:`1px solid ${C.purple}44`, borderRadius:12, padding:"11px 14px", marginBottom:16, display:"flex", gap:9, alignItems:"center" }}>
               <span style={{ fontSize:15 }}>🗳️</span>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.purpleBright, lineHeight:1.4 }}>Vote passed 3–0: <strong>Release full pot to Sam W.</strong></div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.purpleBright, lineHeight:1.4 }}>Vote passed 3–0: <strong>Release full pot to cover the deposit</strong></div>
             </div>
 
             <div style={{ display:"flex", gap:8, marginBottom:14 }}>
@@ -1525,7 +1525,7 @@ function CreateScreen({ onBack, onCreate }) {
           <div>
             <SurfaceCard>
               <Eyebrow>Group name</Eyebrow>
-              <input value={form.name} onChange={e=>upd("name",e.target.value)} placeholder="e.g. Morocco Trip, New Apartment..." autoFocus style={{ width:"100%", border:"none", background:"none", fontFamily:"'DM Sans',sans-serif", fontSize:18, fontWeight:600, color:C.text, padding:0 }} />
+              <input value={form.name} onChange={e=>upd("name",e.target.value)} placeholder="e.g. Sam's Birthday, Spring Break..." autoFocus style={{ width:"100%", border:"none", background:"none", fontFamily:"'DM Sans',sans-serif", fontSize:18, fontWeight:600, color:C.text, padding:0 }} />
             </SurfaceCard>
             <SurfaceCard>
               <Eyebrow>Category</Eyebrow>
@@ -1639,7 +1639,7 @@ function CreateScreen({ onBack, onCreate }) {
 
 // ── Onboarding (phone-first) ───────────────────────────────────
 
-function Onboarding({ onDone, invite }) {
+function Onboarding({ onDone, onGuest, invite }) {
   const [step, setStep] = useState("welcome"); // welcome | phone | code | profile
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -1675,7 +1675,20 @@ function Onboarding({ onDone, invite }) {
     setErr(null);
     if (!LIVE) { setStep("profile"); return; }
     setBusy(true);
-    try { await DB.verifyLoginCode(email.trim(), code.join("")); setStep("profile"); }
+    try {
+      await DB.verifyLoginCode(email.trim(), code.join(""));
+      // Returning user? If they already have a real name saved, skip the name step.
+      try {
+        const existing = await DB.fetchMyProfile();
+        const nm = existing && existing.display_name ? existing.display_name.trim() : "";
+        const isPlaceholder = !nm || nm === "New member" || nm === "Member";
+        if (!isPlaceholder) {
+          onDone({ name: nm, initials: nm.split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase(), color: existing.avatar_color || avatarColor });
+          return;
+        }
+      } catch {}
+      setStep("profile");
+    }
     catch (e) { setErr(e.message); }
     finally { setBusy(false); }
   }
@@ -1738,6 +1751,11 @@ function Onboarding({ onDone, invite }) {
         </div>
         <div>
           <PrimaryBtn onClick={()=>setStep("phone")}>Get started</PrimaryBtn>
+          {!invite && onGuest && (
+            <button onClick={onGuest} style={{ width:"100%", marginTop:12, padding:"13px", borderRadius:13, background:"none", border:`1px solid ${C.border2}`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.green, cursor:"pointer" }}>
+              Explore as guest
+            </button>
+          )}
           <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim, textAlign:"center", marginTop:14, lineHeight:1.5 }}>
             By continuing you agree to our Terms & Privacy Policy.
           </div>
@@ -2466,6 +2484,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
 
 export default function App() {
   const [authed, setAuthed] = useState(false);
+  const [guest, setGuest] = useState(false);
   const [booting, setBooting] = useState(LIVE);
   const [loading, setLoading] = useState(false);
   const [screen, setScreen] = useState("home");
@@ -2682,6 +2701,7 @@ export default function App() {
   }, [screen]);
 
   async function handleJoin() {
+    if (guestBlock()) return;
     let code = joinCode.trim();
     if (!code || joinBusy) return;
     setJoinErr(null); setJoinBusy(true);
@@ -2701,6 +2721,12 @@ export default function App() {
   }
 
   const markCompleted = (id) => setSanduqs(ss => ss.map(s => s.id===id ? { ...s, status:"completed", openVotes:0 } : s));
+  // In guest mode, writes aren't allowed — nudge to sign up. Returns true if blocked.
+  function guestBlock() {
+    if (!guest) return false;
+    setGuest(false); setAuthed(false); setSanduqs(LIVE?[]:SANDUQS);
+    return true;
+  }
   const [activeDM, setActiveDM] = useState(null);
   const [dmThreads, setDmThreads] = useState(DM_THREADS);
   const [dmDraft, setDmDraft] = useState("");
@@ -2729,7 +2755,15 @@ export default function App() {
   if (!authed) return (
     <div>
       <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}`}</style>
-      <Onboarding invite={pendingInvite} onDone={async (profile)=>{
+      <Onboarding invite={pendingInvite} onGuest={()=>{
+        // Guest / demo mode: show the app populated with sample data, no signup.
+        setGuest(true);
+        setMe(ME);
+        setSanduqs(SANDUQS);
+        setHandles([]);
+        setAuthed(true);
+        setLoading(false);
+      }} onDone={async (profile)=>{
         if (profile && profile.name) setMe(makeIdentity(profile.name, profile.color));
         setLoading(true); setAuthed(true);
         if (LIVE) {
@@ -2777,6 +2811,15 @@ export default function App() {
   return (
     <div style={{ fontFamily:"'DM Sans',sans-serif", background:C.bg, minHeight:"100vh", paddingBottom:90 }}>
       <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}::-webkit-scrollbar{width:0;height:0}@keyframes fadeIn{from{opacity:0}to{opacity:1}}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes spin{to{transform:rotate(360deg)}}@keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.2)}100%{transform:scale(1)}}@keyframes confettiFall{0%{transform:translateY(-14px) rotate(0deg);opacity:1}85%{opacity:1}100%{transform:translateY(340px) rotate(540deg);opacity:0}}@keyframes shimmer{0%{background-position:100% 0}100%{background-position:0 0}}`}</style>
+
+      {guest && (
+        <div style={{ position:"fixed", left:0, right:0, bottom:78, zIndex:60, display:"flex", justifyContent:"center", pointerEvents:"none" }}>
+          <div style={{ pointerEvents:"auto", display:"flex", alignItems:"center", gap:12, background:C.greenDk, color:"#fff", borderRadius:14, padding:"10px 14px", boxShadow:"0 8px 24px rgba(0,0,0,0.18)", maxWidth:360, margin:"0 12px" }}>
+            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, lineHeight:1.4 }}>You're exploring with sample data.</span>
+            <button onClick={()=>{ setGuest(false); setAuthed(false); setSanduqs(LIVE?[]:SANDUQS); }} style={{ flexShrink:0, background:"#fff", color:C.greenDk, border:"none", borderRadius:9, padding:"7px 12px", fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:700, cursor:"pointer" }}>Sign up</button>
+          </div>
+        </div>
+      )}
 
       {/* HOME */}
       {screen==="notifications" && (
@@ -3392,7 +3435,7 @@ export default function App() {
           { id:"notifications", icon:"bell" },
           { id:"profile", icon:"profile" },
         ].map(t => (
-          <button key={t.id} onClick={()=>setScreen(t.id)} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor:"pointer", position:"relative" }}>
+          <button key={t.id} onClick={()=>{ if(t.id==="create" && guestBlock()) return; setScreen(t.id); }} style={{ flex:1, display:"flex", alignItems:"center", justifyContent:"center", background:"none", border:"none", cursor:"pointer", position:"relative" }}>
             {t.isAction
               ? <div style={{ width:52, height:52, borderRadius:"50%", background:C.blue, display:"flex", alignItems:"center", justifyContent:"center", marginTop:-26, boxShadow:`0 6px 20px ${C.blue}66`, transition:"transform .12s" }}
                   onMouseDown={e=>e.currentTarget.style.transform="scale(.92)"} onMouseUp={e=>e.currentTarget.style.transform=""}>
