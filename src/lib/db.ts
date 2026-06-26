@@ -55,10 +55,18 @@ export async function fetchMyGroups(): Promise<GroupRow[]> {
     .select("groups(*)")
     .eq("removed", false);
   if (error) throw new Error(error.message);
-  return (data ?? [])
+  const groups = (data ?? [])
     .map((r: any) => r.groups)
     .filter(Boolean)
     .filter((g: any) => g.status !== "archived");
+  // Dedupe by id — a defensive guard so a group can never render twice,
+  // even if the membership join returns the same group more than once.
+  const seen = new Set<string>();
+  const unique: GroupRow[] = [];
+  for (const g of groups) {
+    if (g && g.id && !seen.has(g.id)) { seen.add(g.id); unique.push(g); }
+  }
+  return unique;
 }
 
 export async function createGroup(input: {
