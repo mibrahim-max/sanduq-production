@@ -6,6 +6,7 @@
 //   VITE_SUPABASE_ANON_KEY=...
 // ─────────────────────────────────────────────────────────────
 import { createClient, type SupabaseClient, type Session } from "@supabase/supabase-js";
+import { defaultThemeForCategory } from "./themes";
 
 let _sb: SupabaseClient | null = null;
 export function sb(): SupabaseClient {
@@ -46,7 +47,7 @@ export interface GroupRow {
   id: string; name: string; category: string; scene: string | null;
   goal_cents: number; monthly_cents: number; treasurer_id: string;
   join_policy: string; exit_policy: string; status: string; started_at: string;
-  join_code?: string; due_day?: number;
+  join_code?: string; due_day?: number; theme?: string;
 }
 
 export async function fetchMyGroups(): Promise<GroupRow[]> {
@@ -79,7 +80,13 @@ export async function createGroup(input: {
     p_join_policy: input.joinPolicy, p_exit_policy: input.exitPolicy,
   });
   if (error) throw new Error(error.message);
-  return data as string;
+  const gid = data as string;
+  // Give the new Sanduq a fitting theme based on its category.
+  try {
+    const themeId = defaultThemeForCategory(input.category);
+    if (themeId && themeId !== "minimal_light") await setTheme(gid, themeId);
+  } catch { /* non-fatal: group still created on minimal_light default */ }
+  return gid;
 }
 
 export async function editGroupMeta(groupId: string, name: string, category: string): Promise<void> {
@@ -251,6 +258,11 @@ export async function updateNotifPrefs(prefs: NotifPrefs): Promise<void> {
 }
 export async function signOut(): Promise<void> {
   await sb().auth.signOut();
+}
+
+export async function setTheme(groupId: string, theme: string): Promise<void> {
+  const { error } = await sb().rpc("rpc_set_theme", { p_group: groupId, p_theme: theme });
+  if (error) throw new Error(error.message);
 }
 
 export async function setDueDay(groupId: string, day: number): Promise<void> {
