@@ -1898,7 +1898,7 @@ function ChatPanel({ groupId, myId, onRead }) {
   let lastDay = null;
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 230px)", minHeight:340 }}>
+    <div style={{ display:"flex", flexDirection:"column", height:"70vh", minHeight:380, maxHeight:620 }}>
       <div ref={scrollRef} style={{ flex:1, overflowY:"auto", padding:"6px 2px 10px", display:"flex", flexDirection:"column", gap:2 }}>
         {!loaded && <div style={{ textAlign:"center", color:C.textDim, fontSize:13, padding:"30px 0", fontFamily:"'DM Sans',sans-serif" }}>Loading…</div>}
         {loaded && msgs.length === 0 && (
