@@ -260,6 +260,13 @@ export async function signOut(): Promise<void> {
   await sb().auth.signOut();
 }
 
+export async function deleteMyAccount(): Promise<void> {
+  const { error } = await sb().rpc("rpc_delete_my_account");
+  if (error) throw new Error(error.message);
+  // Sign out locally after the account is gone.
+  try { await sb().auth.signOut(); } catch {}
+}
+
 export async function setTheme(groupId: string, theme: string): Promise<void> {
   const { error } = await sb().rpc("rpc_set_theme", { p_group: groupId, p_theme: theme });
   if (error) throw new Error(error.message);
