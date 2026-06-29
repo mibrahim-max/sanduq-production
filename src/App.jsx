@@ -31,6 +31,8 @@ function mapLiveGroup(row, contribRows, myId, idx) {
     emoji: CAT_EMOJI[row.category] || CAT_EMOJI.Other,
     scene: row.scene || null,
     theme: row.theme || null,
+    kind: row.kind || "savings", event_date: row.event_date || null,
+    per_head_cents: row.per_head_cents || null, price_locked: row.price_locked || false,
     exitPolicy: row.exit_policy, joinPolicy: row.join_policy, monthsIn,
     treasurerId: row.treasurer_id,
     status: row.status === "completed" ? "completed" : undefined,
@@ -44,6 +46,7 @@ const C = {
   // primary brand accent is teal (Sea Glass)
   green: "#118C8C", greenLt: "rgba(17,140,140,0.12)", greenDk: "#0E6973",
   cyan: "#0EA5A5", cyanLt: "rgba(14,165,165,0.12)",
+  teal: "#118C8C", tealLt: "rgba(17,140,140,0.12)",
   // lavender is the celebratory accent
   purple: "#9B8BDB", purpleLt: "rgba(155,139,219,0.16)", purpleBright: "#8B7BD0",
   blue: "#118C8C", blueLt: "rgba(17,140,140,0.12)",
@@ -1482,8 +1485,8 @@ function GroupScreen({ group: g, onBack, onComplete }) {
 }
 
 function CreateScreen({ onBack, onCreate }) {
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState({ name:"", goal:"", monthly:"", cat:"", exitPolicy:"pot", joinPolicy:"catchup" });
+  const [step, setStep] = useState(0);
+  const [form, setForm] = useState({ name:"", goal:"", monthly:"", cat:"", exitPolicy:"pot", joinPolicy:"catchup", kind:"", eventDate:"" });
   const [createBusy, setCreateBusy] = useState(false);
   const [createErr, setCreateErr] = useState(null);
   async function handleCreate() {
@@ -1519,13 +1522,34 @@ function CreateScreen({ onBack, onCreate }) {
       <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"52px 20px 24px", borderBottom:`1px solid ${C.border}` }}>
         <button onClick={onBack} style={{ background:"rgba(255,255,255,.08)", border:"none", borderRadius:20, padding:"7px 14px 7px 10px", color:C.textMid, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, cursor:"pointer", display:"flex", alignItems:"center", gap:6, marginBottom:20 }}>← Back</button>
         <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:26, fontWeight:800, color:C.text, marginBottom:20 }}>
-          {step===1?"Name your Sanduq":step===2?"Set the rules":"Review & create"}
+          {step===0?"What kind?":step===1?"Name your Sanduq":step===2?(form.kind==="event"?"Event details":"Set the rules"):"Review & create"}
         </div>
         <div style={{ display:"flex", gap:6 }}>
-          {[1,2,3].map(s => <div key={s} style={{ flex:1, height:3, borderRadius:3, background:s<=step?C.green:"rgba(255,255,255,.12)", transition:"all .3s" }} />)}
+          {[0,1,2,3].map(s => <div key={s} style={{ flex:1, height:3, borderRadius:3, background:s<=step?C.green:"rgba(255,255,255,.12)", transition:"all .3s" }} />)}
         </div>
       </div>
       <div style={{ padding:"24px 16px" }}>
+        {step===0 && (
+          <div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:C.textMid, lineHeight:1.5, marginBottom:18 }}>Pick how this Sanduq works. You can't change it later.</div>
+            {[
+              { id:"savings", emoji:"🏦", title:"Savings pot", desc:"Everyone chips in over time toward a shared goal. Monthly contributions, votes, the works." },
+              { id:"event", emoji:"🎟️", title:"Event split", desc:"A one-time thing. Split a cost among whoever's in. Perfect for trips, dinners, gifts." },
+            ].map(opt => (
+              <button key={opt.id} onClick={()=>upd("kind",opt.id)} style={{ display:"flex", alignItems:"center", gap:12, width:"100%", textAlign:"left", padding:17, borderRadius:18, marginBottom:13, background:form.kind===opt.id?C.greenLt:C.surface, border:`2px solid ${form.kind===opt.id?C.green:C.border}`, cursor:"pointer", transition:"all .15s" }}>
+                <div style={{ fontSize:30 }}>{opt.emoji}</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:16, fontWeight:800, color:C.text }}>{opt.title}</div>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:3, lineHeight:1.4 }}>{opt.desc}</div>
+                </div>
+                <div style={{ width:20, height:20, borderRadius:"50%", border:`2px solid ${form.kind===opt.id?C.green:C.border}`, background:form.kind===opt.id?C.green:"none", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                  {form.kind===opt.id && <div style={{ width:7, height:7, borderRadius:"50%", background:"#fff" }} />}
+                </div>
+              </button>
+            ))}
+            <PrimaryBtn onClick={()=>form.kind&&setStep(1)} disabled={!form.kind}>Continue</PrimaryBtn>
+          </div>
+        )}
         {step===1 && (
           <div>
             <SurfaceCard>
@@ -1540,10 +1564,30 @@ function CreateScreen({ onBack, onCreate }) {
                 ))}
               </div>
             </SurfaceCard>
-            <PrimaryBtn onClick={()=>can1&&setStep(2)} disabled={!can1}>Continue</PrimaryBtn>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={()=>setStep(0)} style={{ flex:1, padding:15, borderRadius:14, background:C.surface, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Back</button>
+              <div style={{ flex:2 }}><PrimaryBtn onClick={()=>can1&&setStep(2)} disabled={!can1}>Continue</PrimaryBtn></div>
+            </div>
           </div>
         )}
-        {step===2 && (
+        {step===2 && form.kind==="event" && (
+          <div>
+            <SurfaceCard>
+              <Eyebrow>When is it? (optional)</Eyebrow>
+              <input type="date" value={form.eventDate} onChange={e=>upd("eventDate",e.target.value)} style={{ width:"100%", border:"none", background:"none", fontFamily:"'DM Sans',sans-serif", fontSize:17, fontWeight:600, color:C.text, padding:0, outline:"none" }} />
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim, marginTop:6 }}>You can add or change the date later.</div>
+            </SurfaceCard>
+            <div style={{ background:C.blueLt, border:`1px solid ${C.blue}33`, borderRadius:14, padding:"14px 16px", marginBottom:12, display:"flex", gap:10 }}>
+              <span style={{ fontSize:16 }}>💡</span>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.text, lineHeight:1.5 }}>You'll set the price <strong>after</strong> people RSVP, so you can split it by your final headcount. Just create the event first and invite your friends.</div>
+            </div>
+            <div style={{ display:"flex", gap:8 }}>
+              <button onClick={()=>setStep(1)} style={{ flex:1, padding:15, borderRadius:14, background:C.surface, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Back</button>
+              <div style={{ flex:2 }}><PrimaryBtn onClick={()=>setStep(3)}>Continue</PrimaryBtn></div>
+            </div>
+          </div>
+        )}
+        {step===2 && form.kind!=="event" && (
           <div>
             {[{label:"Total goal",key:"goal",hint:"How much is your group saving toward?"},{label:"Monthly per member",key:"monthly",hint:"How much does each member pay monthly?"}].map(f => (
               <SurfaceCard key={f.key}>
@@ -1598,7 +1642,10 @@ function CreateScreen({ onBack, onCreate }) {
                 {form.cat && <Pill label={form.cat} color={C.blue} bg={C.blueLt} />}
               </div>
               <Divider />
-              {[{l:"Total goal",v:`$${goalAmt.value.toLocaleString()}`},{l:"Monthly per member",v:`$${monthlyAmt.value.toLocaleString()}`},{l:"Payment schedule",v:"1st of every month"},{l:"Min. members",v:"3"},{l:"Governance",v:"Simple majority"},{l:"Exit policy",v:EXIT_OPTIONS.find(o=>o.id===form.exitPolicy)?.label},{l:"Your role",v:"Treasurer"}].map((r,i,arr) => (
+              {(form.kind==="event"
+                ? [{l:"Type",v:"Event split"}, ...(form.eventDate?[{l:"Date",v:new Date(form.eventDate+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}]:[]), {l:"Cost split",v:"Set after RSVPs"}, {l:"Your role",v:"Organizer"}]
+                : [{l:"Total goal",v:`$${goalAmt.value.toLocaleString()}`},{l:"Monthly per member",v:`$${monthlyAmt.value.toLocaleString()}`},{l:"Payment schedule",v:"1st of every month"},{l:"Min. members",v:"3"},{l:"Governance",v:"Simple majority"},{l:"Exit policy",v:EXIT_OPTIONS.find(o=>o.id===form.exitPolicy)?.label},{l:"Your role",v:"Treasurer"}]
+              ).map((r,i,arr) => (
                 <div key={r.l}>
                   <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 0" }}>
                     <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid }}>{r.l}</span>
@@ -1946,6 +1993,194 @@ function ChatPanel({ groupId, myId, onRead }) {
   );
 }
 
+// ── Event-split overview (the one-time cost-split mode) ─────────────
+function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
+  const isOrganizer = g.treasurer_id === myId;
+  const members = (detail?.members || []).filter(m => !m.removed);
+  const going = members.filter(m => (m.rsvp || "going") === "going");
+  const goingCount = going.length;
+  const myMembership = members.find(m => m.member_id === myId);
+  const myRsvp = myMembership?.rsvp || "going";
+  const locked = !!g.price_locked;
+  const perHead = g.per_head_cents || 0;
+  const hostId = g.treasurer_id;
+
+  // who owes = going members except the host
+  const owers = going.filter(m => m.member_id !== hostId);
+  const paidCount = owers.filter(m => m.paid).length;
+
+  const [busy, setBusy] = useState(false);
+  const [priceInput, setPriceInput] = useState(g.total_cents ? String(g.total_cents/100) : "");
+  const [perInput, setPerInput] = useState(perHead ? String(perHead/100) : "");
+
+  async function rsvp(v) {
+    if (busy) return; setBusy(true);
+    try { await DB.setRsvp(g.id, v); await reload(); onChanged && onChanged(); } catch {} finally { setBusy(false); }
+  }
+  async function payToggle() {
+    if (busy) return; setBusy(true);
+    try { await DB.markEventPaid(g.id, !myMembership?.paid); await reload(); onChanged && onChanged(); } catch {} finally { setBusy(false); }
+  }
+  async function setPrice(lock) {
+    if (busy) return; setBusy(true);
+    try {
+      const total = priceInput ? Math.round(parseFloat(priceInput)*100) : null;
+      const per = perInput ? Math.round(parseFloat(perInput)*100) : (total && goingCount? Math.round(total/Math.max(1,owers.length||goingCount)) : null);
+      await DB.setEventPrice(g.id, total, per, lock);
+      await reload(); onChanged && onChanged();
+    } catch {} finally { setBusy(false); }
+  }
+  async function togglePaidFor(memberId, current) {
+    if (busy) return; setBusy(true);
+    try { await DB.setPaidFor(g.id, memberId, !current); await reload(); onChanged && onChanged(); } catch {} finally { setBusy(false); }
+  }
+
+  const suggested = (priceInput && owers.length) ? (parseFloat(priceInput)/owers.length) : null;
+  const rsvpBtn = (v, label, color) => (
+    <button onClick={()=>rsvp(v)} disabled={busy} style={{ flex:1, padding:12, borderRadius:13, border: myRsvp===v?"none":`1px solid ${T.cardBorder}`, background: myRsvp===v?color:T.cardBg, color: myRsvp===v?"#fff":T.textMid, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:myRsvp===v?700:600, cursor:"pointer" }}>{label}</button>
+  );
+  const card = (children, style={}) => (
+    <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:16, marginBottom:12, backdropFilter:"blur(7px)", ...style }}>{children}</div>
+  );
+
+  return (
+    <>
+      {/* PRICE NOT LOCKED YET */}
+      {!locked && (
+        <>
+          {card(
+            <>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid }}>Going</div>
+              <div style={{ display:"flex", alignItems:"baseline", gap:8, marginTop:4 }}>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:500, color:T.text, letterSpacing:-1 }}>{goingCount}</span>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textMid }}>going · {members.filter(m=>(m.rsvp||"going")==="maybe").length} maybe</span>
+              </div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:6, lineHeight:1.45 }}>
+                {isOrganizer ? "Set the price below once you know the headcount and cost." : "The organizer hasn't set the price yet. Once they book, you'll see your share."}
+              </div>
+            </>
+          )}
+
+          {/* RSVP control */}
+          {card(
+            <>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid, marginBottom:10 }}>Your RSVP</div>
+              <div style={{ display:"flex", gap:8 }}>
+                {rsvpBtn("going","✓ Going", theme.accent)}
+                {rsvpBtn("maybe","Maybe", C.amber)}
+                {rsvpBtn("no","Can't", C.red)}
+              </div>
+            </>
+          )}
+
+          {/* Organizer: set price */}
+          {isOrganizer && card(
+            <>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid, marginBottom:10 }}>Set the split</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:T.textMid, marginBottom:6 }}>Total cost you paid to book</div>
+              <div style={{ display:"flex", alignItems:"center", gap:4, background:T.inner, border:`1px solid ${T.cardBorder}`, borderRadius:12, padding:"11px 14px", marginBottom:12 }}>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:22, color:T.textMid }}>$</span>
+                <input type="number" value={priceInput} onChange={e=>setPriceInput(e.target.value)} placeholder="0" style={{ flex:1, border:"none", background:"none", fontFamily:"'DM Mono',monospace", fontSize:22, fontWeight:500, color:T.text, padding:0, outline:"none" }} />
+              </div>
+              {suggested!=null && (
+                <div style={{ background:theme.mode==="dark"?"rgba(255,255,255,.08)":"rgba(255,255,255,.5)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid }}>${parseFloat(priceInput||0).toLocaleString()} ÷ {owers.length} paying</div>
+                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:600, color:theme.accent, marginTop:3 }}>${suggested.toLocaleString(undefined,{maximumFractionDigits:2})}<span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textMid, fontWeight:600 }}> / person</span></div>
+                </div>
+              )}
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:T.textMid, marginBottom:6 }}>Per person (adjust if you want)</div>
+              <div style={{ display:"flex", alignItems:"center", gap:4, background:T.inner, border:`1px solid ${T.cardBorder}`, borderRadius:12, padding:"11px 14px", marginBottom:14 }}>
+                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:22, color:T.textMid }}>$</span>
+                <input type="number" value={perInput} onChange={e=>setPerInput(e.target.value)} placeholder={suggested!=null?suggested.toFixed(2):"0"} style={{ flex:1, border:"none", background:"none", fontFamily:"'DM Mono',monospace", fontSize:22, fontWeight:500, color:T.text, padding:0, outline:"none" }} />
+              </div>
+              <div style={{ background:C.amberLt, border:`1px solid ${C.amber}44`, borderRadius:12, padding:"11px 13px", marginBottom:14, display:"flex", gap:9 }}>
+                <span style={{ fontSize:15 }}>🔒</span>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.text, lineHeight:1.45 }}>Once you lock the price, everyone going owes that amount. People joining later won't change what others owe.</div>
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                <button onClick={()=>setPrice(false)} disabled={busy||!priceInput} style={{ flex:1, padding:13, borderRadius:13, background:T.cardBg, border:`1px solid ${T.cardBorder}`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text, cursor:"pointer", opacity:priceInput?1:.5 }}>Save draft</button>
+                <button onClick={()=>setPrice(true)} disabled={busy||(!perInput&&suggested==null)} style={{ flex:1.5, padding:13, borderRadius:13, background:theme.accent, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:theme.onAccent||"#fff", cursor:"pointer", opacity:(perInput||suggested!=null)?1:.5 }}>🔒 Lock price</button>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* PRICE LOCKED */}
+      {locked && (
+        <>
+          {/* What you owe (non-host) or collection status (host) */}
+          {myId !== hostId ? card(
+            <>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid }}>You owe {members.find(m=>m.member_id===hostId)?.profiles?.display_name || "the organizer"}</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:32, fontWeight:500, color:T.text, letterSpacing:-1, marginTop:3 }}>${(perHead/100).toLocaleString()}</div>
+              {(() => {
+                const hostHandles = members.find(m=>m.member_id===hostId)?.profiles?.payment_handles;
+                const handleText = Array.isArray(hostHandles) && hostHandles.length ? hostHandles.map(h=>typeof h==="string"?h:(h.handle||h.value||"")).filter(Boolean).join(" · ") : null;
+                return handleText ? <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, marginTop:4 }}>Send via {handleText}</div> : null;
+              })()}
+              <button onClick={payToggle} disabled={busy} style={{ width:"100%", marginTop:12, background: myMembership?.paid?C.greenLt:theme.accent, color: myMembership?.paid?C.green:(theme.onAccent||"#fff"), border:myMembership?.paid?`1px solid ${C.green}`:"none", borderRadius:12, padding:13, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, cursor:"pointer" }}>
+                {myMembership?.paid ? "✓ Marked as sent" : `I sent $${(perHead/100).toLocaleString()}`}
+              </button>
+            </>
+          ) : card(
+            <>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid }}>You're collecting</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:32, fontWeight:500, color:T.text, letterSpacing:-1, marginTop:3 }}>${((perHead*paidCount)/100).toLocaleString()}<span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.textMid, fontWeight:600 }}> of ${((perHead*owers.length)/100).toLocaleString()}</span></div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>{paidCount} of {owers.length} have paid · ${(perHead/100).toLocaleString()} each</div>
+            </>
+          )}
+
+          {/* Headcount progress */}
+          {card(
+            <>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:T.text }}>{paidCount} of {owers.length} paid</span>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid }}>${((perHead*paidCount)/100).toLocaleString()} of ${((perHead*owers.length)/100).toLocaleString()}</span>
+              </div>
+              <div style={{ display:"flex", gap:5 }}>
+                {owers.map((m,i) => <div key={m.member_id} style={{ flex:1, height:8, borderRadius:4, background: m.paid?C.green:T.track }} />)}
+                {owers.length===0 && <div style={{ flex:1, height:8, borderRadius:4, background:T.track }} />}
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* Who's in — shared by both states */}
+      {card(
+        <>
+          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid, marginBottom:10 }}>
+            {locked ? `Going · $${(perHead/100).toLocaleString()} each` : "Who's in"}
+          </div>
+          {members.map((m,i) => {
+            const r = m.rsvp || "going";
+            const isHost = m.member_id === hostId;
+            const name = m.profiles?.display_name || "Member";
+            return (
+              <div key={m.member_id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderBottom:i<members.length-1?`1px solid ${T.track}`:"none" }}>
+                <div style={{ width:30, height:30, borderRadius:"50%", background:m.profiles?.avatar_color||theme.accent, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700 }}>{name.slice(0,2).toUpperCase()}</div>
+                <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>
+                  {name} {isHost && <span style={{ fontSize:10, color:theme.accent, fontWeight:700 }}>· HOST</span>}
+                </div>
+                {locked && !isHost ? (
+                  isOrganizer ? (
+                    <button onClick={()=>togglePaidFor(m.member_id, m.paid)} disabled={busy} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, border:"none", cursor:"pointer", background:m.paid?C.greenLt:C.amberLt, color:m.paid?C.green:C.amber }}>{m.paid?"✓ Paid":"Mark paid"}</button>
+                  ) : (
+                    <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:m.paid?C.greenLt:C.amberLt, color:m.paid?C.green:C.amber }}>{m.paid?"✓ Paid":`Owes $${(perHead/100).toLocaleString()}`}</span>
+                  )
+                ) : (
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:r==="going"?C.greenLt:r==="maybe"?C.amberLt:C.redLt, color:r==="going"?C.green:r==="maybe"?C.amber:C.red }}>{r==="going"?"Going":r==="maybe"?"Maybe":"Can't"}</span>
+                )}
+              </div>
+            );
+          })}
+        </>
+      )}
+    </>
+  );
+}
+
 function LiveGroupScreen({ group, myId, onBack, onChanged }) {
   const [detail, setDetail] = useState(null);
   const [chatUnread, setChatUnread] = useState(0);
@@ -2174,7 +2409,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
           <div style={{ fontSize:44, lineHeight:1 }}>{theme.emoji}</div>
           <div style={{ flex:1 }}>
             <div style={{ fontFamily:theme.font, fontSize:theme.titleSize||28, fontWeight:theme.tw, color:theme.titleColor, letterSpacing:theme.ls, lineHeight:1.05 }}>{group.name}</div>
-            <div style={{ fontFamily:theme.bodyFont||"'DM Sans',sans-serif", fontSize:13, color:theme.sub, marginTop:4 }}>Started {group.started} · {detail ? detail.members.filter(m=>!m.removed).length : "…"} member{detail && detail.members.filter(m=>!m.removed).length===1?"":"s"}</div>
+            <div style={{ fontFamily:theme.bodyFont||"'DM Sans',sans-serif", fontSize:13, color:theme.sub, marginTop:4 }}>{g.kind==="event" && g.event_date ? `${new Date(g.event_date+"T00:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})} · ` : `Started ${group.started} · `}{detail ? detail.members.filter(m=>!m.removed).length : "…"} member{detail && detail.members.filter(m=>!m.removed).length===1?"":"s"}</div>
           </div>
           <button onClick={()=>setThemePicker(true)} title="Change theme" style={{ width:40, height:40, borderRadius:"50%", background:theme.chip, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginRight:8 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.chipText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill={theme.chipText}/><circle cx="17.5" cy="10.5" r=".5" fill={theme.chipText}/><circle cx="8.5" cy="7.5" r=".5" fill={theme.chipText}/><circle cx="6.5" cy="12.5" r=".5" fill={theme.chipText}/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
@@ -2187,8 +2422,8 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         </div>
       </div>
 
-      {/* Progress card — themed glass on the immersive background */}
-      {detail && (
+      {/* Progress card — themed glass (savings only; events have their own) */}
+      {detail && g.kind!=="event" && (
         <div style={{ margin:"6px 16px 0", position:"relative", zIndex:1, background:theme.glass, border:`1px solid ${theme.glassBorder}`, borderRadius:18, padding:"18px 20px", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)" }}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:10 }}>
             <span style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:500, color:theme.glassText, letterSpacing:-1 }}>${(potCents/100).toLocaleString()}</span>
@@ -2338,7 +2573,10 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         ) : <>
 
         {/* ===== OVERVIEW TAB ===== */}
-        {tab==="overview" && (<>
+        {tab==="overview" && g.kind==="event" && (
+          <EventOverview g={g} detail={detail} myId={myId} T={T} theme={theme} onChanged={onChanged} reload={load} />
+        )}
+        {tab==="overview" && g.kind!=="event" && (<>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
             <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px", minWidth:0, overflow:"hidden" }}>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Monthly Due</div>
@@ -3016,6 +3254,17 @@ export default function App() {
     <div>
       <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
       <CreateScreen onBack={()=>setScreen("home")} onCreate={LIVE ? async (form) => {
+        if (form.kind === "event") {
+          // Event split: no goal/monthly. The price is set later, in-app.
+          await DB.createGroup({
+            name: form.name.trim(), category: form.cat || "Other",
+            goalCents: 0, monthlyCents: 0,
+            joinPolicy: form.joinPolicy, exitPolicy: form.exitPolicy,
+            kind: "event", eventDate: form.eventDate || null,
+          });
+          await loadLive();
+          return;
+        }
         const goal = parseAmount(form.goal);
         const monthly = parseAmount(form.monthly);
         if (!goal.valid || !monthly.valid) throw new Error("Check the goal and monthly amounts");
@@ -3023,6 +3272,7 @@ export default function App() {
           name: form.name.trim(), category: form.cat || "Other",
           goalCents: Math.round(goal.value * 100), monthlyCents: Math.round(monthly.value * 100),
           joinPolicy: form.joinPolicy, exitPolicy: form.exitPolicy,
+          kind: "savings",
         });
         await loadLive();
       } : undefined} />
@@ -3210,12 +3460,18 @@ export default function App() {
                     {/* bottom: poster title */}
                     <div style={{ position:"relative" }}>
                       <div style={{ fontSize:24, fontWeight:800, color:"#fff", letterSpacing:-0.5, lineHeight:1.05, textShadow:"0 2px 12px rgba(0,0,0,0.4)" }}>{g.name}</div>
-                      <div style={{ fontSize:13, color:"rgba(255,255,255,0.9)", marginTop:4, fontWeight:500 }}>Monthly · ${g.monthly}/member</div>
+                      <div style={{ fontSize:13, color:"rgba(255,255,255,0.9)", marginTop:4, fontWeight:500 }}>{g.kind==="event" ? (g.event_date ? new Date(g.event_date+"T00:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"}) : "Event split") : `Monthly · $${g.monthly}/member`}</div>
                     </div>
                   </div>
 
                   {/* Body */}
                   <div style={{ padding:16 }}>
+                    {g.kind==="event" ? (
+                      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 }}>
+                        <span style={{ display:"inline-flex", alignItems:"center", gap:6, fontSize:13, fontWeight:700, color:C.teal, background:C.tealLt, padding:"6px 12px", borderRadius:11 }}>🎟️ Event split</span>
+                        <span style={{ fontSize:14, fontWeight:700, color:C.text, fontFamily:"'DM Mono',monospace" }}>{g.price_locked && g.per_head_cents ? `$${(g.per_head_cents/100).toLocaleString()}/person` : "Price TBD"}</span>
+                      </div>
+                    ) : (<>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline", marginBottom:10 }}>
                       <span style={{ fontSize:22, fontWeight:800, color:C.text, letterSpacing:-0.5, fontFamily:"'DM Mono',monospace" }}>${g.pot.toLocaleString()}</span>
                       <span style={{ fontSize:14, color:C.textMid }}>of ${g.goal.toLocaleString()}</span>
@@ -3225,6 +3481,7 @@ export default function App() {
                       <span style={{ fontSize:13, color:C.textMid }}>{Math.round(pct*100)}% funded</span>
                       <span style={{ fontSize:13, color:C.textMid }}>${(g.goal-g.pot).toLocaleString()} to go</span>
                     </div>
+                    </>)}
 
                     <Divider />
 
