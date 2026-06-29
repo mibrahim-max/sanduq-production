@@ -48,6 +48,8 @@ export interface GroupRow {
   goal_cents: number; monthly_cents: number; treasurer_id: string;
   join_policy: string; exit_policy: string; status: string; started_at: string;
   join_code?: string; due_day?: number; theme?: string;
+  kind?: string; event_date?: string | null; total_cents?: number | null;
+  per_head_cents?: number | null; price_locked?: boolean;
 }
 
 export async function fetchMyGroups(): Promise<GroupRow[]> {
@@ -73,6 +75,7 @@ export async function fetchMyGroups(): Promise<GroupRow[]> {
 export async function createGroup(input: {
   name: string; category: string; goalCents: number; monthlyCents: number;
   joinPolicy: "catchup" | "prorata" | "closed"; exitPolicy: "refund" | "pot" | "vote";
+  kind?: "savings" | "event"; eventDate?: string | null;
 }): Promise<string> {
   const { data, error } = await sb().rpc("rpc_create_group", {
     p_name: input.name, p_category: input.category,
@@ -81,6 +84,12 @@ export async function createGroup(input: {
   });
   if (error) throw new Error(error.message);
   const gid = data as string;
+  // For event-split Sanduqs, mark the kind and event date right after creation.
+  try {
+    if (input.kind === "event") {
+      await sb().from("groups").update({ kind: "event", event_date: input.eventDate || null }).eq("id", gid);
+    }
+  } catch { /* non-fatal */ }
   // Give the new Sanduq a fitting theme based on its category.
   try {
     const themeId = defaultThemeForCategory(input.category);
@@ -265,6 +274,26 @@ export async function deleteMyAccount(): Promise<void> {
   if (error) throw new Error(error.message);
   // Sign out locally after the account is gone.
   try { await sb().auth.signOut(); } catch {}
+}
+
+export async function setRsvp(groupId: string, rsvp: "going"|"maybe"|"no"): Promise<void> {
+  const { error } = await sb().rpc("rpc_set_rsvp", { p_group: groupId, p_rsvp: rsvp });
+  if (error) throw new Error(error.message);
+}
+
+export async function setEventPrice(groupId: string, totalCents: number|null, perHeadCents: number|null, lock: boolean): Promise<void> {
+  const { error } = await sb().rpc("rpc_set_event_price", { p_group: groupId, p_total_cents: totalCents, p_per_head_cents: perHeadCents, p_lock: lock });
+  if (error) throw new Error(error.message);
+}
+
+export async function markEventPaid(groupId: string, paid: boolean): Promise<void> {
+  const { error } = await sb().rpc("rpc_mark_event_paid", { p_group: groupId, p_paid: paid });
+  if (error) throw new Error(error.message);
+}
+
+export async function setPaidFor(groupId: string, memberId: string, paid: boolean): Promise<void> {
+  const { error } = await sb().rpc("rpc_set_paid_for", { p_group: groupId, p_member: memberId, p_paid: paid });
+  if (error) throw new Error(error.message);
 }
 
 export async function setTheme(groupId: string, theme: string): Promise<void> {
