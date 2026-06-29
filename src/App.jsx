@@ -2713,6 +2713,22 @@ export default function App() {
   const [codeCopied, setCodeCopied] = useState(false);
   // Profile settings panel + notification preferences
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteText, setDeleteText] = useState("");
+  const [deleteErr, setDeleteErr] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  async function confirmDeleteAccount() {
+    if (deleteText.trim().toUpperCase() !== "DELETE" || deleteBusy) return;
+    setDeleteBusy(true); setDeleteErr(null);
+    try {
+      await DB.deleteMyAccount();
+      // Account is gone — drop back to the signed-out welcome screen.
+      window.location.href = "/";
+    } catch (e) {
+      setDeleteErr(e.message || "Could not delete account.");
+      setDeleteBusy(false);
+    }
+  }
   const [notifPrefs, setNotifPrefs] = useState({ payment_reminder:true, payment_confirmed:true, missed_payment:true, vote_opened:true, vote_closing:false, vote_result:true, member_joined:false });
   const [prefsBusy, setPrefsBusy] = useState(false);
 
@@ -3477,6 +3493,27 @@ export default function App() {
       {/* PROFILE */}
       {screen==="profile" && (
         <div>
+          {deleteOpen && (
+            <div onClick={()=>!deleteBusy&&setDeleteOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:120, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"24px 20px 32px", width:"100%", maxWidth:460, border:`1px solid ${C.border}` }}>
+                <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 18px" }} />
+                <div style={{ fontSize:30, textAlign:"center", marginBottom:10 }}>⚠️</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:800, color:C.text, textAlign:"center", marginBottom:8 }}>Delete your account?</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:C.textMid, lineHeight:1.55, textAlign:"center", marginBottom:18 }}>
+                  This permanently deletes your account, your group memberships, your payment records, and your messages. This cannot be undone.
+                </div>
+                {deleteErr && (
+                  <div style={{ background:C.redLt, border:`1px solid ${C.red}44`, borderRadius:12, padding:"12px 14px", marginBottom:14, fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.red, lineHeight:1.5 }}>{deleteErr}</div>
+                )}
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:C.textMid, marginBottom:7 }}>Type DELETE to confirm</div>
+                <input value={deleteText} onChange={e=>setDeleteText(e.target.value)} placeholder="DELETE" style={{ width:"100%", background:C.surface2, border:`1px solid ${C.border}`, borderRadius:12, padding:"13px 15px", fontFamily:"'DM Sans',sans-serif", fontSize:15, color:C.text, marginBottom:18, textAlign:"center", letterSpacing:2 }} />
+                <button onClick={confirmDeleteAccount} disabled={deleteText.trim().toUpperCase()!=="DELETE"||deleteBusy} style={{ width:"100%", padding:15, borderRadius:14, background: deleteText.trim().toUpperCase()==="DELETE"&&!deleteBusy?C.red:C.surface2, border:"none", cursor: deleteText.trim().toUpperCase()==="DELETE"&&!deleteBusy?"pointer":"default", fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, color: deleteText.trim().toUpperCase()==="DELETE"&&!deleteBusy?"#fff":C.textDim, marginBottom:10 }}>
+                  {deleteBusy ? "Deleting…" : "Permanently delete my account"}
+                </button>
+                <button onClick={()=>!deleteBusy&&setDeleteOpen(false)} style={{ width:"100%", padding:13, borderRadius:14, background:"none", border:`1px solid ${C.border}`, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.textMid }}>Cancel</button>
+              </div>
+            </div>
+          )}
           {/* Settings sheet */}
           {settingsOpen && (
             <div onClick={()=>setSettingsOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
@@ -3510,6 +3547,9 @@ export default function App() {
                 <button onClick={logOut} style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:"15px 16px", borderRadius:14, background:C.redLt, border:`1px solid ${C.red}33`, cursor:"pointer" }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.red} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                   <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, color:C.red }}>Log Out</span>
+                </button>
+                <button onClick={()=>{ setSettingsOpen(false); setDeleteOpen(true); setDeleteText(""); setDeleteErr(null); }} style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, width:"100%", padding:"13px 16px", borderRadius:14, background:"none", border:"none", cursor:"pointer", marginTop:10 }}>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.textDim, textDecoration:"underline" }}>Delete my account</span>
                 </button>
               </div>
             </div>
