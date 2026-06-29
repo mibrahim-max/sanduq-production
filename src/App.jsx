@@ -1050,7 +1050,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
             )}
             <SurfaceCard>
               <Eyebrow>Group rules</Eyebrow>
-              {[EXIT_POLICY_LABELS[g.exitPolicy] + " (set by creator)", JOIN_POLICY_LABELS[g.joinPolicy] + " (set by creator)", "3 missed payments = auto-removal + pro-rata refund","All changes require a simple majority vote"].map((r,i,arr) => (
+              {[EXIT_POLICY_LABELS[g.exitPolicy] + " (set by creator)", "3 missed payments = auto-removal + pro-rata refund","All changes require a simple majority vote"].map((r,i,arr) => (
                 <div key={i}>
                   <div style={{ display:"flex", gap:10, padding:"10px 0", alignItems:"flex-start" }}>
                     <div style={{ width:5, height:5, borderRadius:"50%", background:g.bar, marginTop:6, flexShrink:0 }} />
@@ -1429,7 +1429,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
         <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:700, color:C.text, marginBottom:4 }}>Invite to {g.name}</div>
         <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginBottom:14 }}>New members see the goal, rules, and join terms before they accept.</div>
 
-        {g.joinPolicy === "closed" ? (
+        {false ? (
           <div style={{ background:C.surface2, border:`1px solid ${C.border2}`, borderRadius:14, padding:"22px 18px", textAlign:"center" }}>
             <div style={{ fontSize:30, marginBottom:10 }}>🔒</div>
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, color:C.text }}>This Sanduq is locked</div>
@@ -1583,21 +1583,6 @@ function CreateScreen({ onBack, onCreate }) {
                 </button>
               ))}
             </SurfaceCard>
-            <SurfaceCard>
-              <Eyebrow>Who can join after you start?</Eyebrow>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim, marginBottom:12 }}>Late joiners see these terms on their invite before accepting.</div>
-              {JOIN_OPTIONS.map(opt => (
-                <button key={opt.id} onClick={()=>upd("joinPolicy",opt.id)} style={{ display:"flex", alignItems:"center", gap:12, width:"100%", padding:13, borderRadius:12, marginBottom:8, background:form.joinPolicy===opt.id?C.blueLt:C.surface2, border:`1.5px solid ${form.joinPolicy===opt.id?C.blue:C.border}`, textAlign:"left", cursor:"pointer", transition:"all .15s" }}>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.text }}>{opt.label}</div>
-                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2 }}>{opt.desc}</div>
-                  </div>
-                  <div style={{ width:18, height:18, borderRadius:"50%", border:`2px solid ${form.joinPolicy===opt.id?C.blue:C.border}`, background:form.joinPolicy===opt.id?C.blue:"none", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-                    {form.joinPolicy===opt.id && <div style={{ width:6, height:6, borderRadius:"50%", background:"#fff" }} />}
-                  </div>
-                </button>
-              ))}
-            </SurfaceCard>
             <div style={{ display:"flex", gap:8 }}>
               <button onClick={()=>setStep(1)} style={{ flex:1, padding:15, borderRadius:14, background:C.surface, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Back</button>
               <div style={{ flex:2 }}><PrimaryBtn onClick={()=>can2&&setStep(3)} disabled={!can2}>Continue</PrimaryBtn></div>
@@ -1613,7 +1598,7 @@ function CreateScreen({ onBack, onCreate }) {
                 {form.cat && <Pill label={form.cat} color={C.blue} bg={C.blueLt} />}
               </div>
               <Divider />
-              {[{l:"Total goal",v:`$${goalAmt.value.toLocaleString()}`},{l:"Monthly per member",v:`$${monthlyAmt.value.toLocaleString()}`},{l:"Payment schedule",v:"1st of every month"},{l:"Min. members",v:"3"},{l:"Governance",v:"Simple majority"},{l:"Exit policy",v:EXIT_OPTIONS.find(o=>o.id===form.exitPolicy)?.label},{l:"Join policy",v:JOIN_OPTIONS.find(o=>o.id===form.joinPolicy)?.label},{l:"Your role",v:"Treasurer"}].map((r,i,arr) => (
+              {[{l:"Total goal",v:`$${goalAmt.value.toLocaleString()}`},{l:"Monthly per member",v:`$${monthlyAmt.value.toLocaleString()}`},{l:"Payment schedule",v:"1st of every month"},{l:"Min. members",v:"3"},{l:"Governance",v:"Simple majority"},{l:"Exit policy",v:EXIT_OPTIONS.find(o=>o.id===form.exitPolicy)?.label},{l:"Your role",v:"Treasurer"}].map((r,i,arr) => (
                 <div key={r.l}>
                   <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 0" }}>
                     <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid }}>{r.l}</span>
@@ -1729,11 +1714,7 @@ function Onboarding({ onDone, onGuest, invite }) {
                 You've been invited to join<br/><strong style={{ fontSize:17 }}>{invite.name}</strong>
               </div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, marginTop:8, lineHeight:1.45 }}>
-                {invite.join_policy === "catchup"
-                  ? `Saving $${(invite.monthly_cents/100).toLocaleString()}/month · joining ${invite.months_in} month${invite.months_in===1?"":"s"} in means a one-time catch-up of $${((invite.monthly_cents/100)*invite.months_in).toLocaleString()}.`
-                  : invite.join_policy === "prorata"
-                    ? `Saving $${(invite.monthly_cents/100).toLocaleString()}/month · you pay from today, shares stay proportional.`
-                    : `Saving $${(invite.monthly_cents/100).toLocaleString()}/month toward $${(invite.goal_cents/100).toLocaleString()}.`}
+                {`Saving $${(invite.monthly_cents/100).toLocaleString()}/month toward $${(invite.goal_cents/100).toLocaleString()}.`}
               </div>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textDim, marginTop:8 }}>Create your account to join.</div>
             </div>
@@ -2396,7 +2377,6 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             <div style={{ marginTop:10 }}>
               {[
                 g.exit_policy==="vote" ? "Group votes on exit refunds (set by creator)" : "Exit refunds follow the set policy",
-                g.join_policy==="catchup" ? "Late joiners catch up on missed months (set by creator)" : "New members pay from their join date",
                 "3 missed payments = auto-removal + pro-rata refund",
                 "Changes to terms require a simple majority vote",
               ].map((r,i,arr) => (
@@ -2608,11 +2588,9 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         <SurfaceCard t={T}>
           <Eyebrow>Invite</Eyebrow>
           <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textMid, lineHeight:1.5, marginBottom:10 }}>
-            {g.join_policy === "closed"
-              ? "This group is locked, so new members can't join."
-              : "Share the code or link. Friends enter the code on their home screen, or tap the link to join instantly."}
+            Share the code or link. Friends enter the code on their home screen, or tap the link to join instantly.
           </div>
-          {g.join_policy !== "closed" && (() => {
+          {(() => {
             const link = `${window.location.origin}/?join=${group.id}`;
             const code = g.join_code || "";
             return (
