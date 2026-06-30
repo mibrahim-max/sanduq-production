@@ -2169,6 +2169,8 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
                   ) : (
                     <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:m.paid?C.greenLt:C.amberLt, color:m.paid?C.green:C.amber }}>{m.paid?"✓ Paid":`Owes $${(perHead/100).toLocaleString()}`}</span>
                   )
+                ) : isHost ? (
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:T.inner, color:T.textMid }}>Organizer</span>
                 ) : (
                   <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:r==="going"?C.greenLt:r==="maybe"?C.amberLt:C.redLt, color:r==="going"?C.green:r==="maybe"?C.amber:C.red }}>{r==="going"?"Going":r==="maybe"?"Maybe":"Can't"}</span>
                 )}
