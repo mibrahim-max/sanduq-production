@@ -2409,7 +2409,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
           <div style={{ fontSize:44, lineHeight:1 }}>{theme.emoji}</div>
           <div style={{ flex:1 }}>
             <div style={{ fontFamily:theme.font, fontSize:theme.titleSize||28, fontWeight:theme.tw, color:theme.titleColor, letterSpacing:theme.ls, lineHeight:1.05 }}>{group.name}</div>
-            <div style={{ fontFamily:theme.bodyFont||"'DM Sans',sans-serif", fontSize:13, color:theme.sub, marginTop:4 }}>{g.kind==="event" && g.event_date ? `${new Date(g.event_date+"T00:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})} · ` : `Started ${group.started} · `}{detail ? detail.members.filter(m=>!m.removed).length : "…"} member{detail && detail.members.filter(m=>!m.removed).length===1?"":"s"}</div>
+            <div style={{ fontFamily:theme.bodyFont||"'DM Sans',sans-serif", fontSize:13, color:theme.sub, marginTop:4 }}>{g && g.kind==="event" && g.event_date ? `${new Date(g.event_date+"T00:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})} · ` : `Started ${group.started} · `}{detail ? detail.members.filter(m=>!m.removed).length : "…"} member{detail && detail.members.filter(m=>!m.removed).length===1?"":"s"}</div>
           </div>
           <button onClick={()=>setThemePicker(true)} title="Change theme" style={{ width:40, height:40, borderRadius:"50%", background:theme.chip, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginRight:8 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.chipText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill={theme.chipText}/><circle cx="17.5" cy="10.5" r=".5" fill={theme.chipText}/><circle cx="8.5" cy="7.5" r=".5" fill={theme.chipText}/><circle cx="6.5" cy="12.5" r=".5" fill={theme.chipText}/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
@@ -2573,10 +2573,10 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         ) : <>
 
         {/* ===== OVERVIEW TAB ===== */}
-        {tab==="overview" && g.kind==="event" && (
+        {tab==="overview" && g && g.kind==="event" && (
           <EventOverview g={g} detail={detail} myId={myId} T={T} theme={theme} onChanged={onChanged} reload={load} />
         )}
-        {tab==="overview" && g.kind!=="event" && (<>
+        {tab==="overview" && (!g || g.kind!=="event") && (<>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
             <div style={{ background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:16, padding:"16px 18px", minWidth:0, overflow:"hidden" }}>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:600, color:T.textDim, letterSpacing:1, textTransform:"uppercase" }}>Monthly Due</div>
@@ -3497,6 +3497,10 @@ export default function App() {
                       <div style={{ display:"flex", gap:6, alignItems:"center" }}>
                         {g.status==="completed"
                           ? <Pill label="Completed ✓" color={C.green} bg={C.greenLt} />
+                          : g.kind==="event"
+                            ? (g.price_locked
+                                ? <Pill label="🔒 Price set" color={C.teal} bg={C.tealLt} />
+                                : <Pill label="Collecting RSVPs" color={C.amber} bg={C.amberLt} />)
                           : g.pot >= g.goal
                             ? <Pill label="🏆 Goal reached" color={C.purpleBright} bg={C.purpleLt} />
                             : <>
