@@ -81,15 +81,10 @@ export async function createGroup(input: {
     p_name: input.name, p_category: input.category,
     p_goal_cents: input.goalCents, p_monthly_cents: input.monthlyCents,
     p_join_policy: input.joinPolicy, p_exit_policy: input.exitPolicy,
+    p_kind: input.kind || "savings", p_event_date: input.eventDate || null,
   });
   if (error) throw new Error(error.message);
   const gid = data as string;
-  // For event-split Sanduqs, mark the kind and event date right after creation.
-  try {
-    if (input.kind === "event") {
-      await sb().from("groups").update({ kind: "event", event_date: input.eventDate || null }).eq("id", gid);
-    }
-  } catch { /* non-fatal */ }
   // Give the new Sanduq a fitting theme based on its category.
   try {
     const themeId = defaultThemeForCategory(input.category);
