@@ -2039,6 +2039,12 @@ function humanizeEvent(a, nameFor) {
       return { icon: "✅", text: `${who} confirmed a payment` };
     case "nudge_unpaid":
       return { icon: "🔔", text: `${who} sent a payment reminder${after.count?` to ${after.count} ${after.count===1?"person":"people"}`:""}` };
+    case "nominate_organizer":
+      return { icon: "🤝", text: `${who} asked someone to take over as organizer` };
+    case "accept_organizer":
+      return { icon: "👑", text: `${who} became the organizer` };
+    case "decline_organizer":
+      return { icon: "🙅", text: `${who} declined to become organizer` };
     case "set_due_day":
       return { icon: "📅", text: `${who} set the due date to day ${after.due_day} of the month` };
     case "set_price":
@@ -2540,7 +2546,20 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
     if (id === myId) return "You";
     const m = (detail?.members || []).find(x => x.member_id === id);
     return m?.profiles?.display_name || null;
-  };  const cycleKey = detail ? [...new Set(detail.contributions.map(c=>c.cycle))].sort().reverse()[0] : null;
+  };
+  const [xferBusy, setXferBusy] = useState(false);
+  async function nominateOrganizer(memberId) {
+    if (xferBusy) return; setXferBusy(true);
+    try { if (DB.nominateOrganizer) { await DB.nominateOrganizer(group.id, memberId); await load(); onChanged && onChanged(); } } catch (e) { alert(e.message || "Could not send the request."); } finally { setXferBusy(false); }
+  }
+  async function respondOrganizer(accept) {
+    if (xferBusy) return; setXferBusy(true);
+    try { if (DB.respondOrganizer) { await DB.respondOrganizer(group.id, accept); await load(); onChanged && onChanged(); } } catch (e) { alert(e.message || "Something went wrong."); } finally { setXferBusy(false); }
+  }
+  async function cancelNomination() {
+    if (xferBusy) return; setXferBusy(true);
+    try { if (DB.cancelNomination) { await DB.cancelNomination(group.id); await load(); onChanged && onChanged(); } } catch {} finally { setXferBusy(false); }
+  }  const cycleKey = detail ? [...new Set(detail.contributions.map(c=>c.cycle))].sort().reverse()[0] : null;
   const cycleRows = detail ? detail.contributions.filter(c => c.cycle === cycleKey) : [];
   const potCents = detail ? detail.contributions.filter(c=>c.status==="confirmed").reduce((a,c)=>a+c.amount_cents,0) : 0;
   const profileOf = (id) => detail?.members.find(m => m.member_id === id)?.profiles;
@@ -2597,13 +2616,35 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
           <button onClick={()=>setThemePicker(true)} title="Change theme" style={{ width:40, height:40, borderRadius:"50%", background:theme.chip, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginRight:8 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.chipText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill={theme.chipText}/><circle cx="17.5" cy="10.5" r=".5" fill={theme.chipText}/><circle cx="8.5" cy="7.5" r=".5" fill={theme.chipText}/><circle cx="6.5" cy="12.5" r=".5" fill={theme.chipText}/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
           </button>
-          {isTreasurer && (
+          <button onClick={()=>{ setTab("chat"); setChatUnread(0); }} title="Group chat" style={{ position:"relative", width:40, height:40, borderRadius:"50%", background:theme.chip, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginRight:8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.chipText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            {chatUnread>0 && <span style={{ position:"absolute", top:-2, right:-2, minWidth:17, height:17, padding:"0 4px", borderRadius:9, background:C.red, color:"#fff", fontSize:10, fontWeight:700, display:"flex", alignItems:"center", justifyContent:"center", border:`2px solid ${theme.chip}` }}>{chatUnread>99?"99+":chatUnread}</span>}
+          </button>
             <button onClick={openEdit} title="Edit Sanduq" style={{ width:40, height:40, borderRadius:"50%", background:theme.chip, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0 }}>
               <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={theme.chipText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>
             </button>
           )}
         </div>
       </div>
+
+      {/* Organizer transfer — nominee sees accept/decline */}
+      {g && g.pending_organizer_id === myId && (
+        <div style={{ margin:"0 16px 12px", background:C.blueLt, border:`1.5px solid ${C.blue}`, borderRadius:16, padding:"15px 16px" }}>
+          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.text, marginBottom:4 }}>🤝 You've been asked to take over</div>
+          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, lineHeight:1.5, marginBottom:12 }}>{nameFor(g.treasurer_id) || "The organizer"} wants to make you the organizer of this event. You'd collect payments and manage the split.</div>
+          <div style={{ display:"flex", gap:8 }}>
+            <button onClick={()=>respondOrganizer(true)} disabled={xferBusy} style={{ flex:1.4, padding:12, borderRadius:12, background:C.blue, color:"#fff", border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, cursor:"pointer" }}>Accept</button>
+            <button onClick={()=>respondOrganizer(false)} disabled={xferBusy} style={{ flex:1, padding:12, borderRadius:12, background:C.surface, color:C.textMid, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, cursor:"pointer" }}>Decline</button>
+          </div>
+        </div>
+      )}
+      {/* Organizer transfer — current organizer sees pending status */}
+      {g && isTreasurer && g.pending_organizer_id && g.pending_organizer_id !== myId && (
+        <div style={{ margin:"0 16px 12px", background:C.amberLt, border:`1px solid ${C.amber}55`, borderRadius:16, padding:"13px 16px", display:"flex", alignItems:"center", gap:12 }}>
+          <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.text, lineHeight:1.45 }}>Waiting for <strong>{nameFor(g.pending_organizer_id) || "them"}</strong> to accept the organizer role.</div>
+          <button onClick={cancelNomination} disabled={xferBusy} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:10, padding:"7px 12px", fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:C.textMid, cursor:"pointer", flexShrink:0 }}>Cancel</button>
+        </div>
+      )}
 
       {/* Progress card — themed glass (savings only; events have their own) */}
       {detail && g.kind!=="event" && (
@@ -2625,7 +2666,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
 
       {/* Tab bar */}
       <div className="tab-scroll" style={{ display:"flex", gap:4, padding:"14px 12px 0", overflowX:"auto", overflowY:"hidden", borderBottom:`1px solid ${T.cardBorder}`, position:"sticky", top:0, zIndex:20, background:"transparent", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", WebkitOverflowScrolling:"touch" }}>
-        {[["overview","Overview"],["payments",g && g.kind==="event"?"Activity":"Payments"],["votes","Votes"],["members","Members"],["chat","Chat"]].map(([k,lbl]) => (
+        {[["overview","Overview"],["payments",g && g.kind==="event"?"Activity":"Payments"],["votes","Votes"],["members","Members"]].map(([k,lbl]) => (
           <button key={k} onClick={()=>{ setTab(k); if(k==="chat") setChatUnread(0); }} style={{ position:"relative", padding:"10px 16px 14px", background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:tab===k?700:500, color:tab===k?T.text:T.textMid }}>
             {lbl}
             {k==="chat" && chatUnread>0 && (
@@ -2889,8 +2930,14 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>{prof.display_name||"Member"}{isMe?" (you)":""}</div>
                       {m.catchup_owed_cents > 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.amber, marginTop:1 }}>Catch-up owed: ${(m.catchup_owed_cents/100).toLocaleString()}</div>}
                     </div>
-                    {isTreas && <Pill label="Treasurer" color={C.blue} bg={C.blueLt} />}
+                    {isTreas && <Pill label={g.kind==="event"?"Organizer":"Treasurer"} color={C.blue} bg={C.blueLt} />}
                     {m.misses > 0 && <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.red }}>{m.misses} miss{m.misses>1?"es":""}</span>}
+                    {g.kind==="event" && isTreasurer && !isMe && !isTreas && !g.pending_organizer_id && (
+                      <button onClick={()=>{ if(confirm(`Ask ${prof.display_name||"this member"} to take over as organizer? They'll need to accept.`)) nominateOrganizer(m.member_id); }} disabled={xferBusy} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:10, background:C.blueLt, color:C.blue, border:"none", cursor:"pointer", flexShrink:0 }}>Make organizer</button>
+                    )}
+                    {g.kind==="event" && g.pending_organizer_id === m.member_id && (
+                      <Pill label="Invited" color={C.amber} bg={C.amberLt} />
+                    )}
                   </div>
                   {i<arr.length-1 && <Divider />}
                 </div>
@@ -3094,9 +3141,15 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         </SurfaceCard>
         </>)}
 
-        {/* ===== CHAT TAB ===== */}
+        {/* ===== CHAT (opened from header icon) ===== */}
         {tab==="chat" && (
-          <ChatPanel groupId={group.id} myId={myId} onRead={onChatRead} />
+          <>
+            <button onClick={()=>setTab("overview")} style={{ display:"flex", alignItems:"center", gap:8, background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:12, padding:"9px 14px", marginBottom:12, cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:600, color:T.text }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={T.text} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              Back to {group.name}
+            </button>
+            <ChatPanel groupId={group.id} myId={myId} onRead={onChatRead} />
+          </>
         )}
         </>}
       </div>
