@@ -289,6 +289,34 @@ function Eyebrow({ children }) {
 
 function Divider({ t } = {}) { return <div style={{ height:1, background: t ? t.divider : C.border }} />; }
 
+// ── Emoji avatars ───────────────────────────────────────────────────
+const AVATAR_EMOJIS = ["😀","😎","🤓","🥳","😴","🤠","👻","🐶","🐱","🦊","🐻","🐼","🐨","🦁","🐯","🦄","🐷","🐵","🦩","🦋","🌸","🌵","🍕","🍔","🌮","🍩","☕","🍺","🎸","🎨","⚽","🏀","🎣","🏔️","🏝️","🚣","🎿","🎳","🎯","🎉","🚀","⭐","🔥","💎","👑","🎧","📚","🌊"];
+const AVATAR_COLORS = ["#118C8C","#4C6EF5","#7C5CFC","#E8590C","#2F9E44","#E64980","#1098AD","#F08C00","#5C7CFA","#12B886"];
+function initialsOf(name) {
+  const n = (name || "").trim();
+  if (!n) return "?";
+  const parts = n.split(/\s+/);
+  return (parts.length > 1 ? parts[0][0] + parts[1][0] : n.slice(0, 2)).toUpperCase();
+}
+// Avatar renders an emoji on a colored circle, or falls back to initials.
+function EmojiAvatar({ emoji, color, name, size = 38, ring }) {
+  const bg = color || "#118C8C";
+  return (
+    <div style={{ width:size, height:size, borderRadius:"50%", background:bg, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, boxShadow: ring ? `0 0 0 3px ${ring}` : undefined }}>
+      {emoji
+        ? <span style={{ fontSize:Math.round(size*0.5), lineHeight:1 }}>{emoji}</span>
+        : <span style={{ fontSize:Math.round(size*0.36), fontWeight:700, color:"#fff" }}>{initialsOf(name)}</span>}
+    </div>
+  );
+}
+// Pick a stable random emoji/color for a brand-new user.
+function randomAvatar() {
+  return {
+    emoji: AVATAR_EMOJIS[Math.floor(Math.random()*AVATAR_EMOJIS.length)],
+    color: AVATAR_COLORS[Math.floor(Math.random()*AVATAR_COLORS.length)],
+  };
+}
+
 // ── Skeleton loading primitives ───────────────────────────────
 function Sk({ w="100%", h=12, r=6, style={} }) {
   return <div style={{ width:w, height:h, borderRadius:r, background:`linear-gradient(90deg,${C.surface2} 25%,${C.border2} 37%,${C.surface2} 63%)`, backgroundSize:"400% 100%", animation:"shimmer 1.4s ease infinite", ...style }} />;
@@ -1955,9 +1983,7 @@ function ChatPanel({ groupId, myId, onRead }) {
               )}
               <div style={{ display:"flex", flexDirection:mine?"row-reverse":"row", alignItems:"flex-end", gap:8, marginBottom:8 }}>
                 {!mine && (
-                  <div style={{ width:28, height:28, borderRadius:"50%", background:m.sender_color||C.green, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, flexShrink:0, fontFamily:"'DM Sans',sans-serif" }}>
-                    {(m.sender_name||"?").slice(0,2).toUpperCase()}
-                  </div>
+                  <EmojiAvatar emoji={m.sender_emoji} color={m.sender_color||C.green} name={m.sender_name} size={28} />
                 )}
                 <div style={{ maxWidth:"74%" }}>
                   {!mine && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textMid, fontWeight:600, margin:"0 0 3px 4px" }}>{m.sender_name}</div>}
@@ -2213,7 +2239,7 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
             const name = m.profiles?.display_name || "Member";
             return (
               <div key={m.member_id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 0", borderBottom:i<members.length-1?`1px solid ${T.track}`:"none" }}>
-                <div style={{ width:30, height:30, borderRadius:"50%", background:m.profiles?.avatar_color||theme.accent, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700 }}>{name.slice(0,2).toUpperCase()}</div>
+                <EmojiAvatar emoji={m.profiles?.avatar_emoji} color={m.profiles?.avatar_color||theme.accent} name={name} size={30} />
                 <div style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>
                   {name} {isHost && <span style={{ fontSize:10, color:theme.accent, fontWeight:700 }}>· HOST</span>}
                 </div>
@@ -2709,9 +2735,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             return (
               <div key={row.id}>
                 <div style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 0" }}>
-                  <div style={{ width:36, height:36, borderRadius:"50%", background:p?.avatar_color || C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:"#FFFFFF", flexShrink:0 }}>
-                    {(p?.display_name || "?").split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase()}
-                  </div>
+                  <EmojiAvatar emoji={p?.avatar_emoji} color={p?.avatar_color || C.blue} name={p?.display_name} size={36} />
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>{p?.display_name || "Member"}{mineRow ? " · you" : ""}{row.member_id === g.treasurer_id ? "  💼" : ""}</div>
                     <Pill label={s.label} color={s.color} bg={s.bg} />
@@ -2763,7 +2787,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
               return (
                 <div key={m.member_id}>
                   <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0" }}>
-                    <div style={{ width:38, height:38, borderRadius:"50%", background:prof.avatar_color||C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, color:"#FFFFFF" }}>{(prof.display_name||"?").slice(0,2).toUpperCase()}</div>
+                    <EmojiAvatar emoji={prof.avatar_emoji} color={prof.avatar_color||C.blue} name={prof.display_name} size={38} />
                     <div style={{ flex:1 }}>
                       <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>{prof.display_name||"Member"}{isMe?" (you)":""}</div>
                       {m.catchup_owed_cents > 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.amber, marginTop:1 }}>Catch-up owed: ${(m.catchup_owed_cents/100).toLocaleString()}</div>}
@@ -2998,6 +3022,18 @@ export default function App() {
   const [me, setMe] = useState(ME); // real signed-in identity {name, initials, color}
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
+  const [avatarOpen, setAvatarOpen] = useState(false);
+  const [avatarEmoji, setAvatarEmoji] = useState(null);
+  const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  async function saveAvatar() {
+    if (avatarBusy) return; setAvatarBusy(true);
+    try {
+      if (LIVE && DB.setAvatar) await DB.setAvatar(avatarEmoji, avatarColor);
+      setMe(m => ({ ...m, emoji: avatarEmoji, color: avatarColor }));
+      setAvatarOpen(false);
+    } catch (e) { /* keep modal open on failure */ } finally { setAvatarBusy(false); }
+  }
   const [savingName, setSavingName] = useState(false);
   const [nameErr, setNameErr] = useState(null);
   // Payment handles
@@ -3152,9 +3188,9 @@ export default function App() {
   const [pendingInvite, setPendingInvite] = useState(null); // {id, name, ...} or null
   const [inviteJoining, setInviteJoining] = useState(false);
 
-  function makeIdentity(name, color) {
+  function makeIdentity(name, color, emoji) {
     const initials = (name || "?").trim().split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
-    return { id: 1, name: name || "Member", initials, color: color || "#3B8EF5" };
+    return { id: 1, name: name || "Member", initials, color: color || "#3B8EF5", emoji: emoji || null };
   }
 
   async function loadLive() {
@@ -3162,7 +3198,7 @@ export default function App() {
       DB.fetchMyGroups(), DB.fetchContribRows(), DB.currentUserId(), DB.fetchMyProfile(),
     ]);
     setMyId(uid);
-    if (profile) { setMe(makeIdentity(profile.display_name, profile.avatar_color)); setHandles(profile.payment_handles || []); }
+    if (profile) { setMe(makeIdentity(profile.display_name, profile.avatar_color, profile.avatar_emoji)); setHandles(profile.payment_handles || []); }
     try { const fr = await DB.fetchMyFriends(); setFriends(fr); } catch {}
     try { const nl = await DB.fetchNotifications(); setNotifList(nl); setNotifUnread(nl.filter(n=>n.unread).length); } catch {}
     setSanduqs(rows.map((r, i) => mapLiveGroup(r, contribs, uid, i)));
@@ -3406,7 +3442,7 @@ export default function App() {
                 <Wordmark size={20} />
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <button onClick={()=>setScreen("profile")} style={{ width:44, height:44, borderRadius:"50%", background:me.color || C.green, display:"flex", alignItems:"center", justifyContent:"center", fontSize:17, fontWeight:700, color:"#FFFFFF", border:"none", cursor:"pointer" }}>{me.initials}</button>
+                <button onClick={()=>setScreen("profile")} style={{ background:"none", border:"none", cursor:"pointer", padding:0 }}><EmojiAvatar emoji={me.emoji} color={me.color} name={me.name} size={44} /></button>
               </div>
             </div>
 
@@ -3820,6 +3856,34 @@ export default function App() {
       {/* PROFILE */}
       {screen==="profile" && (
         <div>
+          {avatarOpen && (
+            <div onClick={()=>!avatarBusy&&setAvatarOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:120, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"18px 18px 30px", width:"100%", maxWidth:460, maxHeight:"88dvh", overflowY:"auto", overscrollBehavior:"contain", border:`1px solid ${C.border}` }}>
+                <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 16px" }} />
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:800, color:C.text, textAlign:"center", marginBottom:4 }}>Pick your avatar</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, textAlign:"center", marginBottom:16 }}>Choose an emoji and a color.</div>
+                <div style={{ display:"flex", justifyContent:"center", marginBottom:16 }}>
+                  <EmojiAvatar emoji={avatarEmoji} color={avatarColor} name={me.name} size={64} />
+                </div>
+                <div style={{ display:"flex", gap:8, justifyContent:"center", flexWrap:"wrap", marginBottom:16 }}>
+                  {AVATAR_COLORS.map(c => (
+                    <button key={c} onClick={()=>setAvatarColor(c)} style={{ width:30, height:30, borderRadius:"50%", background:c, border:avatarColor===c?`3px solid ${C.text}`:"3px solid transparent", cursor:"pointer", padding:0 }} />
+                  ))}
+                </div>
+                <div style={{ background:C.surface2, borderRadius:16, padding:12, marginBottom:16 }}>
+                  <div style={{ display:"grid", gridTemplateColumns:"repeat(6,1fr)", gap:4 }}>
+                    {AVATAR_EMOJIS.map(e => (
+                      <button key={e} onClick={()=>setAvatarEmoji(e)} style={{ aspectRatio:"1", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, borderRadius:10, background:avatarEmoji===e?"#fff":"transparent", border:avatarEmoji===e?`2px solid ${C.blue}`:"2px solid transparent", cursor:"pointer" }}>{e}</button>
+                    ))}
+                  </div>
+                </div>
+                {avatarEmoji && (
+                  <button onClick={()=>setAvatarEmoji(null)} style={{ display:"block", margin:"0 auto 12px", background:"none", border:"none", cursor:"pointer", fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textDim, textDecoration:"underline" }}>Use my initials instead</button>
+                )}
+                <button onClick={saveAvatar} disabled={avatarBusy} style={{ width:"100%", background:C.blue, color:"#fff", border:"none", borderRadius:14, padding:14, fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, cursor:"pointer" }}>{avatarBusy?"Saving…":"Save avatar"}</button>
+              </div>
+            </div>
+          )}
           {deleteOpen && (
             <div onClick={()=>!deleteBusy&&setDeleteOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:120, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
               <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"24px 20px 32px", width:"100%", maxWidth:460, border:`1px solid ${C.border}` }}>
@@ -3895,7 +3959,10 @@ export default function App() {
 
             {/* centered avatar + name */}
             <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginTop:4 }}>
-              <div style={{ width:96, height:96, borderRadius:"50%", background:me.color || C.blue, display:"flex", alignItems:"center", justifyContent:"center", fontSize:36, fontWeight:700, color:"#FFFFFF", boxShadow:`0 0 0 4px ${C.bg}, 0 0 0 5px ${(me.color||C.blue)}55`, marginBottom:16 }}>{me.initials}</div>
+              <button onClick={()=>{ setAvatarEmoji(me.emoji || null); setAvatarColor(me.color || AVATAR_COLORS[0]); setAvatarOpen(true); }} style={{ background:"none", border:"none", cursor:"pointer", padding:0, position:"relative", marginBottom:16 }}>
+                <EmojiAvatar emoji={me.emoji} color={me.color} name={me.name} size={96} ring={`${(me.color||C.blue)}55`} />
+                <div style={{ position:"absolute", bottom:2, right:2, width:30, height:30, borderRadius:"50%", background:C.blue, border:`3px solid ${C.bg}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:13 }}>✏️</div>
+              </button>
               {editingName ? (
                 <div style={{ display:"flex", gap:8, alignItems:"center", width:"100%", maxWidth:300 }}>
                   <input autoFocus value={nameDraft} onChange={e=>setNameDraft(e.target.value)} placeholder="Your name"
