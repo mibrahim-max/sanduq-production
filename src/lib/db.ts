@@ -313,6 +313,21 @@ export async function setShares(groupId: string, shares: Record<string, number |
   if (error) throw new Error(error.message);
 }
 
+export async function nominateOrganizer(groupId: string, memberId: string): Promise<void> {
+  const { error } = await sb().rpc("rpc_nominate_organizer", { p_group: groupId, p_member: memberId });
+  if (error) throw new Error(error.message);
+}
+
+export async function respondOrganizer(groupId: string, accept: boolean): Promise<void> {
+  const { error } = await sb().rpc("rpc_respond_organizer", { p_group: groupId, p_accept: accept });
+  if (error) throw new Error(error.message);
+}
+
+export async function cancelNomination(groupId: string): Promise<void> {
+  const { error } = await sb().rpc("rpc_cancel_nomination", { p_group: groupId });
+  if (error) throw new Error(error.message);
+}
+
 export async function setTheme(groupId: string, theme: string): Promise<void> {
   const { error } = await sb().rpc("rpc_set_theme", { p_group: groupId, p_theme: theme });
   if (error) throw new Error(error.message);
