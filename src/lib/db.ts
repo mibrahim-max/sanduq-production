@@ -35,10 +35,20 @@ export async function currentSession(): Promise<Session | null> {
 export async function updateDisplayName(name: string): Promise<void> {
   const session = await currentSession();
   if (!session) throw new Error("Not signed in");
-  // upsert (not update) so it works whether or not the trigger has
-  // created the profile row yet — avoids the signup timing race.
+  // Give brand-new users a fun random emoji + color so nobody's blank.
+  // Only set the avatar fields if they're not already present.
+  const EMOJIS = ["😀","😎","🤓","🥳","🐶","🐱","🦊","🐻","🐼","🦁","🦄","🦩","🌸","🍕","☕","🎸","🎨","⚽","🎣","🏔️","🚣","🎉","🚀","⭐","🔥","💎","👑","🎧","🌊"];
+  const COLORS = ["#118C8C","#4C6EF5","#7C5CFC","#E8590C","#2F9E44","#E64980","#1098AD","#F08C00","#5C7CFA","#12B886"];
+  let existing: any = null;
+  try {
+    const { data } = await sb().from("profiles").select("avatar_emoji, avatar_color").eq("id", session.user.id).single();
+    existing = data;
+  } catch { /* row may not exist yet */ }
+  const patch: any = { id: session.user.id, display_name: name };
+  if (!existing || !existing.avatar_emoji) patch.avatar_emoji = EMOJIS[Math.floor(Math.random()*EMOJIS.length)];
+  if (!existing || !existing.avatar_color) patch.avatar_color = COLORS[Math.floor(Math.random()*COLORS.length)];
   const { error } = await sb().from("profiles")
-    .upsert({ id: session.user.id, display_name: name }, { onConflict: "id" });
+    .upsert(patch, { onConflict: "id" });
   if (error) throw new Error(error.message);
 }
 
@@ -326,7 +336,7 @@ export async function fetchGroupDetail(groupId: string) {
   const s = sb();
   const [group, members, contributions, votes, expenses, audit] = await Promise.all([
     s.from("groups").select("*").eq("id", groupId).single(),
-    s.from("memberships").select("*, profiles(display_name, avatar_color, payment_handles)").eq("group_id", groupId),
+    s.from("memberships").select("*, profiles(display_name, avatar_color, avatar_emoji, payment_handles)").eq("group_id", groupId),
     s.from("contributions").select("*").eq("group_id", groupId).order("cycle", { ascending: false }),
     s.from("votes").select("*, ballots(member_id, choice)").eq("group_id", groupId).order("created_at", { ascending: false }),
     s.from("expenses").select("*").eq("group_id", groupId).order("created_at", { ascending: false }),
@@ -343,12 +353,12 @@ export async function fetchGroupDetail(groupId: string) {
 // ── Realtime: live confirmations and chat-ready subscription ─
 export interface ChatMessage {
   id: string; group_id: string; sender_id: string; body: string; created_at: string;
-  sender_name?: string; sender_color?: string;
+  sender_name?: string; sender_color?: string; sender_emoji?: string | null;
 }
 
 export async function fetchMessages(groupId: string): Promise<ChatMessage[]> {
   const { data, error } = await sb().from("messages")
-    .select("*, profiles(display_name, avatar_color)")
+    .select("*, profiles(display_name, avatar_color, avatar_emoji)")
     .eq("group_id", groupId)
     .order("created_at", { ascending: true })
     .limit(200);
@@ -356,6 +366,7 @@ export async function fetchMessages(groupId: string): Promise<ChatMessage[]> {
   return (data || []).map((m: any) => ({
     id: m.id, group_id: m.group_id, sender_id: m.sender_id, body: m.body, created_at: m.created_at,
     sender_name: m.profiles?.display_name || "Member", sender_color: m.profiles?.avatar_color || "#118C8C",
+    sender_emoji: m.profiles?.avatar_emoji || null,
   }));
 }
 
@@ -430,14 +441,24 @@ export async function currentUserId(): Promise<string | null> {
 }
 
 export interface PaymentHandle { app: string; handle: string; }
-export interface MyProfile { id: string; display_name: string; avatar_color: string; payment_handles: PaymentHandle[]; }
+export interface MyProfile { id: string; display_name: string; avatar_color: string; avatar_emoji?: string | null; payment_handles: PaymentHandle[]; }
 export async function fetchMyProfile(): Promise<MyProfile | null> {
   const s = await currentSession();
   if (!s) return null;
   const { data, error } = await sb().from("profiles")
-    .select("id, display_name, avatar_color, payment_handles").eq("id", s.user.id).single();
-  if (error) return { id: s.user.id, display_name: "Member", avatar_color: "#3B8EF5", payment_handles: [] };
+    .select("id, display_name, avatar_color, avatar_emoji, payment_handles").eq("id", s.user.id).single();
+  if (error) return { id: s.user.id, display_name: "Member", avatar_color: "#3B8EF5", avatar_emoji: null, payment_handles: [] };
   return { ...data, payment_handles: normalizeHandles((data as any).payment_handles) } as MyProfile;
+}
+
+// Save the user's avatar (emoji + color). Either can be omitted to leave unchanged.
+export async function setAvatar(emoji: string | null, color?: string): Promise<void> {
+  const s = await currentSession();
+  if (!s) throw new Error("Not signed in");
+  const patch: any = { avatar_emoji: emoji };
+  if (color) patch.avatar_color = color;
+  const { error } = await sb().from("profiles").update(patch).eq("id", s.user.id);
+  if (error) throw new Error(error.message);
 }
 
 // payment_handles is stored as jsonb; accept either an array or a {app:handle} object.
