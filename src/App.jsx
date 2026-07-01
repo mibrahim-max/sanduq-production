@@ -287,7 +287,7 @@ function Eyebrow({ children }) {
   return <div style={{ fontFamily:"'DM Mono',monospace", fontSize:10, fontWeight:500, color:C.textDim, letterSpacing:2, textTransform:"uppercase", marginBottom:8 }}>{children}</div>;
 }
 
-function Divider() { return <div style={{ height:1, background:C.border }} />; }
+function Divider({ t } = {}) { return <div style={{ height:1, background: t ? t.divider : C.border }} />; }
 
 // ── Skeleton loading primitives ───────────────────────────────
 function Sk({ w="100%", h=12, r=6, style={} }) {
@@ -1993,6 +1993,60 @@ function ChatPanel({ groupId, myId, onRead }) {
   );
 }
 
+// ── Turn a raw audit_events row into a friendly timeline entry ───────
+function humanizeEvent(a, nameFor) {
+  const who = nameFor(a.actor_id) || "Someone";
+  const after = a.after || {};
+  const before = a.before || {};
+  const money = (c) => `$${(Number(c||0)/100).toLocaleString()}`;
+  // Returns { icon, text } describing what happened in plain language.
+  switch (a.action) {
+    case "set_theme":
+      return { icon: "🎨", text: `${who} changed the theme` };
+    case "set_due_day":
+      return { icon: "📅", text: `${who} set the due date to day ${after.due_day} of the month` };
+    case "set_price":
+      return { icon: "💲", text: `${who} set a draft price${after.total_cents!=null?` of ${money(after.total_cents)} total`:""}` };
+    case "lock_price":
+      return { icon: "🔒", text: `${who} locked the price at ${money(after.per_head_cents)} per person` };
+    case "vote":
+    case "votes":
+      return { icon: "🗳️", text: `${who} started a vote` };
+    case "ballot":
+    case "ballots":
+      return { icon: "✅", text: `${who} cast a vote` };
+    case "distributions":
+      return { icon: "💸", text: `${who} recorded a payout` };
+    case "expenses":
+      return { icon: "🧾", text: `${who} logged an expense` };
+    default:
+      break;
+  }
+  // Fall back on table-level changes from the generic trigger.
+  switch (a.table_name) {
+    case "memberships":
+      return { icon: "👋", text: `${who} ${a.action === "INSERT" ? "joined the group" : a.action === "DELETE" ? "left the group" : "updated their membership"}` };
+    case "contributions":
+      return { icon: "💵", text: `${who} ${a.action === "INSERT" ? "logged a contribution" : "updated a contribution"}${after.amount_cents?` of ${money(after.amount_cents)}`:""}` };
+    case "groups":
+      return { icon: "⚙️", text: `${who} updated the group` };
+    default:
+      return { icon: "•", text: `${who} made a change` };
+  }
+}
+
+// Relative time like "2h ago", "just now", "3d ago".
+function relTime(iso) {
+  const then = new Date(iso).getTime();
+  const diff = Date.now() - then;
+  const m = Math.floor(diff/60000), h = Math.floor(diff/3600000), d = Math.floor(diff/86400000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  if (d < 7) return `${d}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
 // ── Event-split overview (the one-time cost-split mode) ─────────────
 function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
   const isOrganizer = g.treasurer_id === myId;
@@ -2359,7 +2413,11 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
     divider: theme.track,
   };
   const isTreasurer = g && g.treasurer_id === myId;
-  const cycleKey = detail ? [...new Set(detail.contributions.map(c=>c.cycle))].sort().reverse()[0] : null;
+  const nameFor = (id) => {
+    if (id === myId) return "You";
+    const m = (detail?.members || []).find(x => x.member_id === id);
+    return m?.profiles?.display_name || null;
+  };  const cycleKey = detail ? [...new Set(detail.contributions.map(c=>c.cycle))].sort().reverse()[0] : null;
   const cycleRows = detail ? detail.contributions.filter(c => c.cycle === cycleKey) : [];
   const potCents = detail ? detail.contributions.filter(c=>c.status==="confirmed").reduce((a,c)=>a+c.amount_cents,0) : 0;
   const profileOf = (id) => detail?.members.find(m => m.member_id === id)?.profiles;
@@ -2444,7 +2502,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
 
       {/* Tab bar */}
       <div className="tab-scroll" style={{ display:"flex", gap:4, padding:"14px 12px 0", overflowX:"auto", overflowY:"hidden", borderBottom:`1px solid ${T.cardBorder}`, position:"sticky", top:0, zIndex:20, background:"transparent", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", WebkitOverflowScrolling:"touch" }}>
-        {[["overview","Overview"],["payments","Payments"],["votes","Votes"],["members","Members"],["chat","Chat"]].map(([k,lbl]) => (
+        {[["overview","Overview"],["payments",g && g.kind==="event"?"Activity":"Payments"],["votes","Votes"],["members","Members"],["chat","Chat"]].map(([k,lbl]) => (
           <button key={k} onClick={()=>{ setTab(k); if(k==="chat") setChatUnread(0); }} style={{ position:"relative", padding:"10px 16px 14px", background:"none", border:"none", cursor:"pointer", whiteSpace:"nowrap", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:tab===k?700:500, color:tab===k?T.text:T.textMid }}>
             {lbl}
             {k==="chat" && chatUnread>0 && (
@@ -2633,7 +2691,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         </>)}
 
         {/* ===== PAYMENTS TAB: current cycle ===== */}
-        {tab==="payments" && (<>
+        {tab==="payments" && g && g.kind!=="event" && (<>
         {/* Current cycle — the two-key handshake, live */}
         <SurfaceCard t={T}>
           <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:4 }}>
@@ -2891,21 +2949,27 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         </SurfaceCard>
         </>)}
 
-        {/* ===== PAYMENTS TAB: audit ===== */}
+        {/* ===== PAYMENTS TAB: activity ===== */}
         {tab==="payments" && (<>
-        {/* Audit trail */}
+        {/* Activity timeline */}
         <SurfaceCard t={T}>
-          <Eyebrow>Audit trail · append-only</Eyebrow>
-          {detail.audit.length === 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textMid, padding:"8px 0" }}>Events will appear here as money moves.</div>}
-          {detail.audit.slice(0,10).map((a,i) => (
-            <div key={a.id}>
-              <div style={{ display:"flex", justifyContent:"space-between", gap:10, padding:"9px 0" }}>
-                <span style={{ fontFamily:"'DM Mono',monospace", fontSize:11.5, color:T.textMid }}>{a.action} · {a.table_name}</span>
-                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, color:T.textDim, flexShrink:0 }}>{new Date(a.at).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}</span>
+          <Eyebrow>Activity</Eyebrow>
+          {detail.audit.length === 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textMid, padding:"8px 0" }}>Things that happen in this group will show up here.</div>}
+          {detail.audit.slice(0,20).map((a,i,arr) => {
+            const ev = humanizeEvent(a, nameFor);
+            return (
+              <div key={a.id}>
+                <div style={{ display:"flex", alignItems:"center", gap:11, padding:"10px 0" }}>
+                  <div style={{ width:30, height:30, borderRadius:"50%", background:T.inner, display:"flex", alignItems:"center", justifyContent:"center", fontSize:15, flexShrink:0 }}>{ev.icon}</div>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:T.text, lineHeight:1.4 }}>{ev.text}</div>
+                  </div>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, color:T.textDim, flexShrink:0 }}>{relTime(a.at)}</span>
+                </div>
+                {i < Math.min(19, arr.length-1) && <Divider t={T} />}
               </div>
-              {i < Math.min(9, detail.audit.length-1) && <Divider />}
-            </div>
-          ))}
+            );
+          })}
         </SurfaceCard>
         </>)}
 
