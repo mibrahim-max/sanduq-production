@@ -3271,6 +3271,14 @@ export default function App() {
     await loadNotifications();
     try { await DB.markNotificationsSeen(); setNotifUnread(0); } catch {}
   }
+  const [clearingNotifs, setClearingNotifs] = useState(false);
+  async function clearAllNotifications() {
+    if (clearingNotifs) return; setClearingNotifs(true);
+    try {
+      if (LIVE && DB.clearNotifications) await DB.clearNotifications();
+      setNotifList([]); setNotifUnread(0);
+    } catch (e) { console.error(e); } finally { setClearingNotifs(false); }
+  }
 
   async function loadCalendar() {
     if (!LIVE) return;
@@ -3557,8 +3565,15 @@ export default function App() {
       {screen==="notifications" && (
         <div>
           <div style={{ background:`linear-gradient(160deg,${C.surface2},${C.bg})`, padding:"56px 20px 20px", borderBottom:`1px solid ${C.border}` }}>
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:26, fontWeight:800, color:C.text }}>Notifications</div>
-            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:4 }}>Activity in your Sanduqs and friend requests</div>
+            <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:12 }}>
+              <div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:26, fontWeight:800, color:C.text }}>Notifications</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:4 }}>Activity in your Sanduqs and friend requests</div>
+              </div>
+              {notifList.length > 0 && (
+                <button onClick={clearAllNotifications} disabled={clearingNotifs} style={{ flexShrink:0, marginTop:4, background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"8px 14px", fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:C.textMid, cursor:"pointer" }}>{clearingNotifs?"Clearing…":"Clear all"}</button>
+              )}
+            </div>
           </div>
           {notifList.length === 0 ? (
             <EmptyState icon="🔔" title="Nothing yet" body="When someone pays, a vote happens, or a friend request comes in, it'll show up here." />
