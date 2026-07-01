@@ -301,6 +301,18 @@ export async function setPaidFor(groupId: string, memberId: string, paid: boolea
   if (error) throw new Error(error.message);
 }
 
+export async function nudgeUnpaid(groupId: string): Promise<number> {
+  const { data, error } = await sb().rpc("rpc_nudge_unpaid", { p_group: groupId });
+  if (error) throw new Error(error.message);
+  return (data as number) ?? 0;
+}
+
+// Set custom per-person amounts. shares maps member_id -> cents (or null to clear).
+export async function setShares(groupId: string, shares: Record<string, number | null>): Promise<void> {
+  const { error } = await sb().rpc("rpc_set_shares", { p_group: groupId, p_shares: shares });
+  if (error) throw new Error(error.message);
+}
+
 export async function setTheme(groupId: string, theme: string): Promise<void> {
   const { error } = await sb().rpc("rpc_set_theme", { p_group: groupId, p_theme: theme });
   if (error) throw new Error(error.message);
