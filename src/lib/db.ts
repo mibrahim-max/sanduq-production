@@ -37,7 +37,7 @@ export async function updateDisplayName(name: string): Promise<void> {
   if (!session) throw new Error("Not signed in");
   // Give brand-new users a fun random emoji + color so nobody's blank.
   // Only set the avatar fields if they're not already present.
-  const EMOJIS = ["😀","😎","🤓","🥳","🐶","🐱","🦊","🐻","🐼","🦁","🦄","🦩","🌸","🍕","☕","🎸","🎨","⚽","🎣","🏔️","🚣","🎉","🚀","⭐","🔥","💎","👑","🎧","🌊"];
+  const EMOJIS = ["😀", "😎", "🤓", "🥳", "🐶", "🐱", "🦊", "🐻", "🐼", "🐨", "🦁", "🐯", "🦄", "🐷", "🐵", "🐧", "🦆", "🦉", "🦅", "🐺", "🐰", "🐹", "🐸", "🐢", "🐙", "🦈", "🐳", "🐬", "🦭", "🦥", "🐝", "🦋", "🦩", "🦚", "🦜", "🐴", "🦒", "🐘", "🌸", "🍕", "☕", "🎸", "🎨", "⚽", "🎣", "🏔️", "🚣", "🎉", "🚀", "⭐", "🔥", "💎", "👑", "🎧", "🌊"];
   const COLORS = ["#118C8C","#4C6EF5","#7C5CFC","#E8590C","#2F9E44","#E64980","#1098AD","#F08C00","#5C7CFA","#12B886"];
   let existing: any = null;
   try {
