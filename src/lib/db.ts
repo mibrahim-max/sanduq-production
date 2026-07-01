@@ -255,6 +255,11 @@ export async function markNotificationsSeen(): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function clearNotifications(): Promise<void> {
+  const { error } = await sb().rpc("rpc_clear_notifications");
+  if (error) throw new Error(error.message);
+}
+
 export interface NotifPrefs { [key: string]: boolean; }
 const DEFAULT_PREFS: NotifPrefs = { payment_reminder:true, payment_confirmed:true, missed_payment:true, vote_opened:true, vote_closing:false, vote_result:true, member_joined:false };
 export async function fetchNotifPrefs(): Promise<NotifPrefs> {
