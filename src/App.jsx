@@ -2104,14 +2104,18 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
   // Each member owes their custom amount if set, else the even per-head split.
   const owedFor = (m) => (m.owed_cents != null ? m.owed_cents : perHead);
 
-  // who owes = going members except the host
+  // The split is divided among EVERYONE going, host included. The host's
+  // share is already covered (they fronted the booking), so it's auto-paid.
+  // "owers" = people who still need to SEND money to the host (everyone but host).
+  const isPaidFor = (m) => (m.member_id === hostId) ? true : !!m.paid;
   const owers = going.filter(m => m.member_id !== hostId);
   const paidCount = owers.filter(m => m.paid).length;
-  const totalOwed = owers.reduce((s,m) => s + owedFor(m), 0);
-  const totalPaid = owers.filter(m=>m.paid).reduce((s,m) => s + owedFor(m), 0);
-  const anyCustom = owers.some(m => m.owed_cents != null);
+  // Totals cover the whole trip (all going), since the host owes a share too.
+  const totalOwed = going.reduce((s,m) => s + owedFor(m), 0);
+  const totalPaid = going.filter(m=>isPaidFor(m)).reduce((s,m) => s + owedFor(m), 0);
+  const anyCustom = going.some(m => m.owed_cents != null);
   const myOwed = myMembership ? owedFor(myMembership) : perHead;
-  // Everyone who owes has paid (and there's at least one ower) → event is settled.
+  // Settled when everyone who owes (the non-host owers) has paid.
   const settled = locked && owers.length > 0 && paidCount === owers.length;
 
   const [busy, setBusy] = useState(false);
@@ -2130,7 +2134,7 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
     if (busy) return; setBusy(true);
     try {
       const total = priceInput ? Math.round(parseFloat(priceInput)*100) : null;
-      const per = perInput ? Math.round(parseFloat(perInput)*100) : (total && goingCount? Math.round(total/Math.max(1,owers.length||goingCount)) : null);
+      const per = perInput ? Math.round(parseFloat(perInput)*100) : (total && goingCount? Math.round(total/Math.max(1,going.length)) : null);
       await DB.setEventPrice(g.id, total, per, lock);
       await reload(); onChanged && onChanged();
     } catch {} finally { setBusy(false); }
@@ -2143,20 +2147,20 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
   const [customOpen, setCustomOpen] = useState(false);
   const [shareEdits, setShareEdits] = useState({}); // member_id -> dollars string
   // What each ower owes given current edits (falls back to even split suggestion).
-  const evenSuggest = (priceInput && owers.length) ? (parseFloat(priceInput)/owers.length) : (perHead/100);
+  const evenSuggest = (priceInput && going.length) ? (parseFloat(priceInput)/going.length) : (perHead/100);
   const shareDollarsFor = (m) => {
     if (shareEdits[m.member_id] !== undefined) return shareEdits[m.member_id];
     if (m.owed_cents != null) return String(m.owed_cents/100);
     return evenSuggest ? evenSuggest.toFixed(2) : "";
   };
-  const allocatedCents = owers.reduce((s,m) => s + Math.round((parseFloat(shareDollarsFor(m))||0)*100), 0);
-  const targetCents = priceInput ? Math.round(parseFloat(priceInput)*100) : (perHead*owers.length);
+  const allocatedCents = going.reduce((s,m) => s + Math.round((parseFloat(shareDollarsFor(m))||0)*100), 0);
+  const targetCents = priceInput ? Math.round(parseFloat(priceInput)*100) : (perHead*going.length);
   const allocDiff = allocatedCents - targetCents; // >0 over, <0 under
   async function saveShares(lock) {
     if (busy) return; setBusy(true);
     try {
       const map = {};
-      owers.forEach(m => { const d = parseFloat(shareDollarsFor(m)); map[m.member_id] = isNaN(d) ? null : Math.round(d*100); });
+      going.forEach(m => { const d = parseFloat(shareDollarsFor(m)); map[m.member_id] = isNaN(d) ? null : Math.round(d*100); });
       if (DB.setShares) await DB.setShares(g.id, map);
       // Lock the price too (per-head stays as a reference; individual amounts drive owed).
       const per = Math.round(evenSuggest*100) || 0;
@@ -2170,7 +2174,7 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
   }
   const unpaidCount = owers.filter(m => !m.paid).length;
 
-  const suggested = (priceInput && owers.length) ? (parseFloat(priceInput)/owers.length) : null;
+  const suggested = (priceInput && going.length) ? (parseFloat(priceInput)/going.length) : null;
   const rsvpBtn = (v, label, color) => (
     <button onClick={()=>rsvp(v)} disabled={busy} style={{ flex:1, padding:12, borderRadius:13, border: myRsvp===v?"none":`1px solid ${T.cardBorder}`, background: myRsvp===v?color:T.cardBg, color: myRsvp===v?"#fff":T.textMid, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:myRsvp===v?700:600, cursor:"pointer" }}>{label}</button>
   );
@@ -2219,7 +2223,7 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
               </div>
               {suggested!=null && (
                 <div style={{ background:theme.mode==="dark"?"rgba(255,255,255,.08)":"rgba(255,255,255,.5)", borderRadius:12, padding:"12px 14px", marginBottom:12 }}>
-                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid }}>${parseFloat(priceInput||0).toLocaleString()} ÷ {owers.length} paying</div>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid }}>${parseFloat(priceInput||0).toLocaleString()} ÷ {going.length} {going.length===1?"person":"people"}</div>
                   <div style={{ fontFamily:"'DM Mono',monospace", fontSize:26, fontWeight:600, color:theme.accent, marginTop:3 }}>${suggested.toLocaleString(undefined,{maximumFractionDigits:2})}<span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:T.textMid, fontWeight:600 }}> / person</span></div>
                 </div>
               )}
@@ -2305,7 +2309,8 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
             <>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid }}>You're collecting</div>
               <div style={{ fontFamily:"'DM Mono',monospace", fontSize:32, fontWeight:500, color:T.text, letterSpacing:-1, marginTop:3 }}>${(totalPaid/100).toLocaleString()}<span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.textMid, fontWeight:600 }}> of ${(totalOwed/100).toLocaleString()}</span></div>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>{paidCount} of {owers.length} have paid{anyCustom?" · custom amounts":` · $${(perHead/100).toLocaleString()} each`}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>{paidCount} of {owers.length} others have paid{anyCustom?" · custom amounts":` · $${(perHead/100).toLocaleString()} each`}</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, color:C.green, marginTop:6 }}>✓ Your own ${(owedFor(myMembership||{})/100).toLocaleString()} share is covered — you fronted the booking.</div>
               {unpaidCount > 0 && (
                 <button onClick={sendNudge} disabled={busy} style={{ width:"100%", marginTop:12, background: nudged?C.greenLt:T.inner, color: nudged?C.green:T.text, border:`1px solid ${nudged?C.green:T.cardBorder}`, borderRadius:12, padding:12, fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:700, cursor:"pointer" }}>
                   {nudged ? "✓ Reminder sent" : `🔔 Remind the ${unpaidCount} who ${unpaidCount===1?"hasn't":"haven't"} paid`}
@@ -2353,7 +2358,11 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
                     <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:m.paid?C.greenLt:C.amberLt, color:m.paid?C.green:C.amber }}>{m.paid?"✓ Paid":`Owes $${(owedFor(m)/100).toLocaleString()}`}</span>
                   )
                 ) : isHost ? (
-                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:T.inner, color:T.textMid }}>Organizer</span>
+                  locked ? (
+                    <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:C.greenLt, color:C.green }} title="The host's share is covered by the booking they paid">✓ ${(owedFor(m)/100).toLocaleString()} · host</span>
+                  ) : (
+                    <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:T.inner, color:T.textMid }}>Organizer</span>
+                  )
                 ) : (
                   <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:r==="going"?C.greenLt:r==="maybe"?C.amberLt:C.redLt, color:r==="going"?C.green:r==="maybe"?C.amber:C.red }}>{r==="going"?"Going":r==="maybe"?"Maybe":"Can't"}</span>
                 )}
