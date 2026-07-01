@@ -2088,6 +2088,8 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
   // who owes = going members except the host
   const owers = going.filter(m => m.member_id !== hostId);
   const paidCount = owers.filter(m => m.paid).length;
+  // Everyone who owes has paid (and there's at least one ower) → event is settled.
+  const settled = locked && owers.length > 0 && paidCount === owers.length;
 
   const [busy, setBusy] = useState(false);
   const [priceInput, setPriceInput] = useState(g.total_cents ? String(g.total_cents/100) : "");
@@ -2189,6 +2191,14 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
       {/* PRICE LOCKED */}
       {locked && (
         <>
+          {/* Settled celebration — everyone who owes has paid */}
+          {settled && (
+            <div style={{ background:`linear-gradient(135deg, ${C.green}, ${theme.accent})`, borderRadius:16, padding:"18px 16px", marginBottom:12, textAlign:"center", position:"relative", overflow:"hidden" }}>
+              <div style={{ fontSize:34, marginBottom:4 }}>🎉</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:17, fontWeight:800, color:"#fff" }}>Fully collected!</div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:"rgba(255,255,255,.9)", marginTop:3, lineHeight:1.4 }}>Everyone's paid {myId === hostId ? "you" : (members.find(m=>m.member_id===hostId)?.profiles?.display_name || "the organizer")} their share. You're all set.</div>
+            </div>
+          )}
           {/* What you owe (non-host) or collection status (host) */}
           {myId !== hostId ? card(
             <>
