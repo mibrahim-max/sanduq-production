@@ -2029,6 +2029,16 @@ function humanizeEvent(a, nameFor) {
   switch (a.action) {
     case "set_theme":
       return { icon: "🎨", text: `${who} changed the theme` };
+    case "set_rsvp":
+      return { icon: after.rsvp === "going" ? "✅" : after.rsvp === "maybe" ? "🤔" : "❌", text: `${who} RSVP'd ${after.rsvp === "going" ? "Going" : after.rsvp === "maybe" ? "Maybe" : "Can't go"}` };
+    case "marked_paid":
+      return { icon: "💸", text: `${who} marked themselves paid` };
+    case "marked_unpaid":
+      return { icon: "↩️", text: `${who} marked a payment unpaid` };
+    case "confirmed_paid":
+      return { icon: "✅", text: `${who} confirmed a payment` };
+    case "nudge_unpaid":
+      return { icon: "🔔", text: `${who} sent a payment reminder${after.count?` to ${after.count} ${after.count===1?"person":"people"}`:""}` };
     case "set_due_day":
       return { icon: "📅", text: `${who} set the due date to day ${after.due_day} of the month` };
     case "set_price":
@@ -2085,9 +2095,16 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
   const perHead = g.per_head_cents || 0;
   const hostId = g.treasurer_id;
 
+  // Each member owes their custom amount if set, else the even per-head split.
+  const owedFor = (m) => (m.owed_cents != null ? m.owed_cents : perHead);
+
   // who owes = going members except the host
   const owers = going.filter(m => m.member_id !== hostId);
   const paidCount = owers.filter(m => m.paid).length;
+  const totalOwed = owers.reduce((s,m) => s + owedFor(m), 0);
+  const totalPaid = owers.filter(m=>m.paid).reduce((s,m) => s + owedFor(m), 0);
+  const anyCustom = owers.some(m => m.owed_cents != null);
+  const myOwed = myMembership ? owedFor(myMembership) : perHead;
   // Everyone who owes has paid (and there's at least one ower) → event is settled.
   const settled = locked && owers.length > 0 && paidCount === owers.length;
 
@@ -2116,6 +2133,36 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
     if (busy) return; setBusy(true);
     try { await DB.setPaidFor(g.id, memberId, !current); await reload(); onChanged && onChanged(); } catch {} finally { setBusy(false); }
   }
+  const [nudged, setNudged] = useState(false);
+  const [customOpen, setCustomOpen] = useState(false);
+  const [shareEdits, setShareEdits] = useState({}); // member_id -> dollars string
+  // What each ower owes given current edits (falls back to even split suggestion).
+  const evenSuggest = (priceInput && owers.length) ? (parseFloat(priceInput)/owers.length) : (perHead/100);
+  const shareDollarsFor = (m) => {
+    if (shareEdits[m.member_id] !== undefined) return shareEdits[m.member_id];
+    if (m.owed_cents != null) return String(m.owed_cents/100);
+    return evenSuggest ? evenSuggest.toFixed(2) : "";
+  };
+  const allocatedCents = owers.reduce((s,m) => s + Math.round((parseFloat(shareDollarsFor(m))||0)*100), 0);
+  const targetCents = priceInput ? Math.round(parseFloat(priceInput)*100) : (perHead*owers.length);
+  const allocDiff = allocatedCents - targetCents; // >0 over, <0 under
+  async function saveShares(lock) {
+    if (busy) return; setBusy(true);
+    try {
+      const map = {};
+      owers.forEach(m => { const d = parseFloat(shareDollarsFor(m)); map[m.member_id] = isNaN(d) ? null : Math.round(d*100); });
+      if (DB.setShares) await DB.setShares(g.id, map);
+      // Lock the price too (per-head stays as a reference; individual amounts drive owed).
+      const per = Math.round(evenSuggest*100) || 0;
+      await DB.setEventPrice(g.id, targetCents, per, lock);
+      await reload(); onChanged && onChanged();
+    } catch {} finally { setBusy(false); }
+  }
+  async function sendNudge() {
+    if (busy) return; setBusy(true);
+    try { if (DB.nudgeUnpaid) { await DB.nudgeUnpaid(g.id); setNudged(true); setTimeout(()=>setNudged(false), 3000); await reload(); } } catch {} finally { setBusy(false); }
+  }
+  const unpaidCount = owers.filter(m => !m.paid).length;
 
   const suggested = (priceInput && owers.length) ? (parseFloat(priceInput)/owers.length) : null;
   const rsvpBtn = (v, label, color) => (
@@ -2175,13 +2222,48 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
                 <span style={{ fontFamily:"'DM Mono',monospace", fontSize:22, color:T.textMid }}>$</span>
                 <input type="number" value={perInput} onChange={e=>setPerInput(e.target.value)} placeholder={suggested!=null?suggested.toFixed(2):"0"} style={{ flex:1, border:"none", background:"none", fontFamily:"'DM Mono',monospace", fontSize:22, fontWeight:500, color:T.text, padding:0, outline:"none" }} />
               </div>
+              {/* Custom shares toggle */}
+              {owers.length > 0 && (
+                <button onClick={()=>setCustomOpen(o=>!o)} style={{ width:"100%", background:"none", border:`1px dashed ${T.cardBorder}`, borderRadius:12, padding:"10px 13px", marginBottom:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:T.text }}>⚖️ Split unevenly</span>
+                  <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid }}>{customOpen?"Hide":"Adjust each person"}</span>
+                </button>
+              )}
+              {customOpen && (
+                <div style={{ background:T.inner, borderRadius:14, padding:13, marginBottom:14 }}>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, marginBottom:10, lineHeight:1.4 }}>Set what each person owes. Starts at the even split — adjust anyone up or down.</div>
+                  {owers.map(m => {
+                    const name = m.profiles?.display_name || "Member";
+                    return (
+                      <div key={m.member_id} style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                        <EmojiAvatar emoji={m.profiles?.avatar_emoji} color={m.profiles?.avatar_color||theme.accent} name={name} size={26} />
+                        <span style={{ flex:1, fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:600, color:T.text, minWidth:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{name}</span>
+                        <div style={{ display:"flex", alignItems:"center", gap:3, background:T.cardBg, border:`1px solid ${T.cardBorder}`, borderRadius:10, padding:"7px 10px", width:100 }}>
+                          <span style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:T.textMid }}>$</span>
+                          <input type="number" value={shareDollarsFor(m)} onChange={e=>setShareEdits(s=>({ ...s, [m.member_id]: e.target.value }))} style={{ width:"100%", border:"none", background:"none", fontFamily:"'DM Mono',monospace", fontSize:14, color:T.text, padding:0, outline:"none" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {/* Reconciliation */}
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:10, paddingTop:10, borderTop:`1px solid ${T.cardBorder}` }}>
+                    <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:T.textMid }}>Allocated</span>
+                    <span style={{ fontFamily:"'DM Mono',monospace", fontSize:13.5, fontWeight:600, color: allocDiff===0?C.green:C.amber }}>
+                      ${(allocatedCents/100).toLocaleString()} / ${(targetCents/100).toLocaleString()}
+                      {allocDiff!==0 && <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, marginLeft:6 }}>({allocDiff>0?"+":""}{(allocDiff/100).toLocaleString()})</span>}
+                    </span>
+                  </div>
+                  {allocDiff!==0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, color:C.amber, marginTop:5 }}>{allocDiff>0?"Over the total by":"Under the total by"} ${(Math.abs(allocDiff)/100).toLocaleString()}. You can still lock — this just won't match what you paid.</div>}
+                </div>
+              )}
+
               <div style={{ background:C.amberLt, border:`1px solid ${C.amber}44`, borderRadius:12, padding:"11px 13px", marginBottom:14, display:"flex", gap:9 }}>
                 <span style={{ fontSize:15 }}>🔒</span>
-                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.text, lineHeight:1.45 }}>Once you lock the price, everyone going owes that amount. People joining later won't change what others owe.</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.text, lineHeight:1.45 }}>Once you lock the price, everyone going owes {customOpen?"their set amount":"that amount"}. People joining later won't change what others owe.</div>
               </div>
               <div style={{ display:"flex", gap:8 }}>
-                <button onClick={()=>setPrice(false)} disabled={busy||!priceInput} style={{ flex:1, padding:13, borderRadius:13, background:T.cardBg, border:`1px solid ${T.cardBorder}`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text, cursor:"pointer", opacity:priceInput?1:.5 }}>Save draft</button>
-                <button onClick={()=>setPrice(true)} disabled={busy||(!perInput&&suggested==null)} style={{ flex:1.5, padding:13, borderRadius:13, background:theme.accent, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:theme.onAccent||"#fff", cursor:"pointer", opacity:(perInput||suggested!=null)?1:.5 }}>🔒 Lock price</button>
+                <button onClick={()=>customOpen?saveShares(false):setPrice(false)} disabled={busy||!priceInput} style={{ flex:1, padding:13, borderRadius:13, background:T.cardBg, border:`1px solid ${T.cardBorder}`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text, cursor:"pointer", opacity:priceInput?1:.5 }}>Save draft</button>
+                <button onClick={()=>customOpen?saveShares(true):setPrice(true)} disabled={busy||(!perInput&&suggested==null&&!customOpen)} style={{ flex:1.5, padding:13, borderRadius:13, background:theme.accent, border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:theme.onAccent||"#fff", cursor:"pointer", opacity:(perInput||suggested!=null||customOpen)?1:.5 }}>🔒 Lock price</button>
               </div>
             </>
           )}
@@ -2203,21 +2285,26 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
           {myId !== hostId ? card(
             <>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid }}>You owe {members.find(m=>m.member_id===hostId)?.profiles?.display_name || "the organizer"}</div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:32, fontWeight:500, color:T.text, letterSpacing:-1, marginTop:3 }}>${(perHead/100).toLocaleString()}</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:32, fontWeight:500, color:T.text, letterSpacing:-1, marginTop:3 }}>${(myOwed/100).toLocaleString()}</div>
               {(() => {
                 const hostHandles = members.find(m=>m.member_id===hostId)?.profiles?.payment_handles;
                 const handleText = Array.isArray(hostHandles) && hostHandles.length ? hostHandles.map(h=>typeof h==="string"?h:(h.handle||h.value||"")).filter(Boolean).join(" · ") : null;
                 return handleText ? <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, marginTop:4 }}>Send via {handleText}</div> : null;
               })()}
               <button onClick={payToggle} disabled={busy} style={{ width:"100%", marginTop:12, background: myMembership?.paid?C.greenLt:theme.accent, color: myMembership?.paid?C.green:(theme.onAccent||"#fff"), border:myMembership?.paid?`1px solid ${C.green}`:"none", borderRadius:12, padding:13, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, cursor:"pointer" }}>
-                {myMembership?.paid ? "✓ Marked as sent" : `I sent $${(perHead/100).toLocaleString()}`}
+                {myMembership?.paid ? "✓ Marked as sent" : `I sent $${(myOwed/100).toLocaleString()}`}
               </button>
             </>
           ) : card(
             <>
               <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid }}>You're collecting</div>
-              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:32, fontWeight:500, color:T.text, letterSpacing:-1, marginTop:3 }}>${((perHead*paidCount)/100).toLocaleString()}<span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.textMid, fontWeight:600 }}> of ${((perHead*owers.length)/100).toLocaleString()}</span></div>
-              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>{paidCount} of {owers.length} have paid · ${(perHead/100).toLocaleString()} each</div>
+              <div style={{ fontFamily:"'DM Mono',monospace", fontSize:32, fontWeight:500, color:T.text, letterSpacing:-1, marginTop:3 }}>${(totalPaid/100).toLocaleString()}<span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:T.textMid, fontWeight:600 }}> of ${(totalOwed/100).toLocaleString()}</span></div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:T.textMid, marginTop:4 }}>{paidCount} of {owers.length} have paid{anyCustom?" · custom amounts":` · $${(perHead/100).toLocaleString()} each`}</div>
+              {unpaidCount > 0 && (
+                <button onClick={sendNudge} disabled={busy} style={{ width:"100%", marginTop:12, background: nudged?C.greenLt:T.inner, color: nudged?C.green:T.text, border:`1px solid ${nudged?C.green:T.cardBorder}`, borderRadius:12, padding:12, fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:700, cursor:"pointer" }}>
+                  {nudged ? "✓ Reminder sent" : `🔔 Remind the ${unpaidCount} who ${unpaidCount===1?"hasn't":"haven't"} paid`}
+                </button>
+              )}
             </>
           )}
 
@@ -2226,7 +2313,7 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
             <>
               <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
                 <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:T.text }}>{paidCount} of {owers.length} paid</span>
-                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid }}>${((perHead*paidCount)/100).toLocaleString()} of ${((perHead*owers.length)/100).toLocaleString()}</span>
+                <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid }}>${(totalPaid/100).toLocaleString()} of ${(totalOwed/100).toLocaleString()}</span>
               </div>
               <div style={{ display:"flex", gap:5 }}>
                 {owers.map((m,i) => <div key={m.member_id} style={{ flex:1, height:8, borderRadius:4, background: m.paid?C.green:T.track }} />)}
@@ -2241,7 +2328,7 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
       {card(
         <>
           <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:T.textMid, marginBottom:10 }}>
-            {locked ? `Going · $${(perHead/100).toLocaleString()} each` : "Who's in"}
+            {locked ? (anyCustom ? "Going · custom amounts" : `Going · $${(perHead/100).toLocaleString()} each`) : "Who's in"}
           </div>
           {members.map((m,i) => {
             const r = m.rsvp || "going";
@@ -2255,9 +2342,9 @@ function EventOverview({ g, detail, myId, T, theme, onChanged, reload }) {
                 </div>
                 {locked && !isHost ? (
                   isOrganizer ? (
-                    <button onClick={()=>togglePaidFor(m.member_id, m.paid)} disabled={busy} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, border:"none", cursor:"pointer", background:m.paid?C.greenLt:C.amberLt, color:m.paid?C.green:C.amber }}>{m.paid?"✓ Paid":"Mark paid"}</button>
+                    <button onClick={()=>togglePaidFor(m.member_id, m.paid)} disabled={busy} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, border:"none", cursor:"pointer", background:m.paid?C.greenLt:C.amberLt, color:m.paid?C.green:C.amber }}>{m.paid?"✓ Paid":`Mark paid · $${(owedFor(m)/100).toLocaleString()}`}</button>
                   ) : (
-                    <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:m.paid?C.greenLt:C.amberLt, color:m.paid?C.green:C.amber }}>{m.paid?"✓ Paid":`Owes $${(perHead/100).toLocaleString()}`}</span>
+                    <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:m.paid?C.greenLt:C.amberLt, color:m.paid?C.green:C.amber }}>{m.paid?"✓ Paid":`Owes $${(owedFor(m)/100).toLocaleString()}`}</span>
                   )
                 ) : isHost ? (
                   <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:11, background:T.inner, color:T.textMid }}>Organizer</span>
