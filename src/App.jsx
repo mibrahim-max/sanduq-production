@@ -2557,6 +2557,21 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
     return m?.profiles?.display_name || null;
   };
   const [xferBusy, setXferBusy] = useState(false);
+  const [profileMember, setProfileMember] = useState(null); // member obj for profile modal
+  const [copiedHandle, setCopiedHandle] = useState(null);
+  // Normalize payment_handles (jsonb: array of strings or {app,handle}) → [{app,handle}]
+  function handlesOf(prof) {
+    const raw = prof?.payment_handles;
+    if (!Array.isArray(raw)) return [];
+    return raw.map(h => {
+      if (typeof h === "string") return { app: "", handle: h };
+      return { app: h.app || h.type || "", handle: h.handle || h.value || "" };
+    }).filter(h => h.handle);
+  }
+  function copyHandle(text) {
+    try { navigator.clipboard?.writeText(text); } catch {}
+    setCopiedHandle(text); setTimeout(()=>setCopiedHandle(null), 1500);
+  }
   async function nominateOrganizer(memberId) {
     if (xferBusy) return; setXferBusy(true);
     try { if (DB.nominateOrganizer) { await DB.nominateOrganizer(group.id, memberId); await load(); onChanged && onChanged(); } } catch (e) { alert(e.message || "Could not send the request."); } finally { setXferBusy(false); }
@@ -2931,16 +2946,26 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
               const prof = m.profiles || {};
               const isMe = m.member_id === myId;
               const isTreas = m.member_id === g.treasurer_id;
+              const memHandles = handlesOf(prof);
+              const primaryHandle = memHandles[0];
               return (
                 <div key={m.member_id}>
                   <div style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 0" }}>
-                    <EmojiAvatar emoji={prof.avatar_emoji} color={prof.avatar_color||C.blue} name={prof.display_name} size={38} />
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>{prof.display_name||"Member"}{isMe?" (you)":""}</div>
-                      {m.catchup_owed_cents > 0 && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.amber, marginTop:1 }}>Catch-up owed: ${(m.catchup_owed_cents/100).toLocaleString()}</div>}
-                    </div>
+                    <button onClick={()=>setProfileMember(m)} style={{ background:"none", border:"none", padding:0, cursor:"pointer", display:"flex", alignItems:"center", gap:12, flex:1, minWidth:0, textAlign:"left" }}>
+                      <EmojiAvatar emoji={prof.avatar_emoji} color={prof.avatar_color||C.blue} name={prof.display_name} size={38} />
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:T.text }}>{prof.display_name||"Member"}{isMe?" (you)":""}</div>
+                        {primaryHandle
+                          ? <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:T.textMid, marginTop:1, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{primaryHandle.app?`${primaryHandle.app}: `:""}{primaryHandle.handle}</div>
+                          : m.catchup_owed_cents > 0
+                            ? <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.amber, marginTop:1 }}>Catch-up owed: ${(m.catchup_owed_cents/100).toLocaleString()}</div>
+                            : <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, color:T.textDim, marginTop:1 }}>Tap to view</div>}
+                      </div>
+                    </button>
+                    {primaryHandle && (
+                      <button onClick={()=>copyHandle(primaryHandle.handle)} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:10, background:copiedHandle===primaryHandle.handle?C.greenLt:T.inner, color:copiedHandle===primaryHandle.handle?C.green:T.textMid, border:`1px solid ${copiedHandle===primaryHandle.handle?C.green:T.cardBorder}`, cursor:"pointer", flexShrink:0 }}>{copiedHandle===primaryHandle.handle?"✓ Copied":"Copy"}</button>
+                    )}
                     {isTreas && <Pill label={g.kind==="event"?"Organizer":"Treasurer"} color={C.blue} bg={C.blueLt} />}
-                    {m.misses > 0 && <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.red }}>{m.misses} miss{m.misses>1?"es":""}</span>}
                     {g.kind==="event" && isTreasurer && !isMe && !isTreas && !g.pending_organizer_id && (
                       <button onClick={()=>{ if(confirm(`Ask ${prof.display_name||"this member"} to take over as organizer? They'll need to accept.`)) nominateOrganizer(m.member_id); }} disabled={xferBusy} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, padding:"5px 10px", borderRadius:10, background:C.blueLt, color:C.blue, border:"none", cursor:"pointer", flexShrink:0 }}>Make organizer</button>
                     )}
@@ -3163,6 +3188,41 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         </>}
       </div>
       </div>{/* end content sheet */}
+
+      {/* Member profile modal */}
+      {profileMember && (() => {
+        const p = profileMember.profiles || {};
+        const mh = handlesOf(p);
+        const isTreas = profileMember.member_id === g?.treasurer_id;
+        const isMe = profileMember.member_id === myId;
+        return (
+          <div onClick={()=>setProfileMember(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:140, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+            <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"20px 20px 32px", width:"100%", maxWidth:460, border:`1px solid ${C.border}` }}>
+              <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 20px" }} />
+              <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginBottom:18 }}>
+                <EmojiAvatar emoji={p.avatar_emoji} color={p.avatar_color||C.blue} name={p.display_name} size={72} />
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:19, fontWeight:800, color:C.text, marginTop:12 }}>{p.display_name||"Member"}{isMe?" (you)":""}</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.textMid, marginTop:3 }}>{isTreas ? (g?.kind==="event"?"Organizer":"Treasurer") : "Member"}</div>
+              </div>
+              <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:C.textMid, marginBottom:10 }}>Pay with</div>
+              {mh.length === 0 ? (
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:C.textDim, padding:"4px 0 8px", lineHeight:1.5 }}>{isMe ? "You haven't added a payment handle yet. Add one in your profile so people know how to pay you." : `${(p.display_name||"This member").split(" ")[0]} hasn't added a payment handle yet.`}</div>
+              ) : (
+                mh.map((h, idx) => (
+                  <div key={idx} style={{ display:"flex", alignItems:"center", gap:10, padding:"11px 14px", background:C.surface2, borderRadius:12, marginBottom:8 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      {h.app && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, color:C.textMid }}>{h.app}</div>}
+                      <div style={{ fontFamily:"'DM Mono',monospace", fontSize:14, color:C.text, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{h.handle}</div>
+                    </div>
+                    <button onClick={()=>copyHandle(h.handle)} style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, fontWeight:700, padding:"7px 13px", borderRadius:10, background:copiedHandle===h.handle?C.greenLt:C.surface, color:copiedHandle===h.handle?C.green:C.blue, border:`1px solid ${copiedHandle===h.handle?C.green:C.border}`, cursor:"pointer", flexShrink:0 }}>{copiedHandle===h.handle?"✓ Copied":"Copy"}</button>
+                  </div>
+                ))
+              )}
+              <button onClick={()=>setProfileMember(null)} style={{ width:"100%", marginTop:14, padding:13, borderRadius:14, background:C.surface2, border:`1px solid ${C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.textMid, cursor:"pointer" }}>Close</button>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -3629,38 +3689,29 @@ export default function App() {
             )}
           </div>
 
-          {/* Stats row */}
-          <div style={{ padding:"0 18px", marginBottom:16, display:"flex", gap:10 }}>
-            {[{label:"Total saved",val:`$${totalSaved.toLocaleString()}`},{label:"Sanduqs",val:String(sanduqs.length)},{label:"Friends",val:String(friends.filter(f=>f.status==="accepted").length)}].map(s => (
-              <div key={s.label} style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:14, padding:"13px 12px" }}>
-                <div style={{ fontSize:11, color:C.textMid, fontWeight:500, marginBottom:8 }}>{s.label}</div>
-                {loading ? <Sk w={48} h={20} /> : <div style={{ fontSize:s.label==="Total saved"?18:20, fontWeight:800, color:C.text, letterSpacing:-0.5, fontFamily:"'DM Mono',monospace" }}>{s.val}</div>}
-              </div>
-            ))}
-          </div>
-
-          {/* Overall progress */}
-          {!loading && sanduqs.length > 0 && (
-          <div style={{ padding:"0 18px", marginBottom:18 }}>
-            <div style={{ background:`linear-gradient(135deg,${C.surface2} 0%,${C.surface} 100%)`, border:`1px solid ${C.border2}`, borderRadius:18, padding:"18px 18px 20px" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-                <span style={{ fontSize:14, color:C.textMid, fontWeight:500 }}>Overall progress</span>
-                <span style={{ fontSize:12, fontWeight:600, color:C.purpleBright, background:C.purpleLt, padding:"5px 11px", borderRadius:20, border:`1px solid ${C.purple}44` }}>
-                  {sanduqs.reduce((a,g)=>a+g.openVotes,0)} open votes
-                </span>
-              </div>
-              <div style={{ display:"flex", alignItems:"baseline", gap:8, marginBottom:14 }}>
-                <span style={{ fontSize:34, fontWeight:800, color:C.text, letterSpacing:-1.5, fontFamily:"'DM Mono',monospace" }}>${totalSaved.toLocaleString()}</span>
-                <span style={{ fontSize:18, color:C.textDim, fontWeight:500 }}>/ ${totalGoal.toLocaleString()}</span>
-              </div>
-              <Bar pct={overallPct} color={C.green} />
-              <div style={{ display:"flex", justifyContent:"space-between", marginTop:11 }}>
-                <span style={{ fontSize:14, color:C.green, fontWeight:700 }}>{Math.round(overallPct*100)}% funded</span>
-                <span style={{ fontSize:14, color:C.textMid }}>${(totalGoal-totalSaved).toLocaleString()} to go</span>
-              </div>
+          {/* Greeting + quick actions (replaces the redundant dashboard) */}
+          <div style={{ padding:"0 18px", marginBottom:16 }}>
+            <div style={{ fontFamily:"'Bricolage Grotesque','DM Sans',sans-serif", fontSize:22, fontWeight:800, color:C.text, letterSpacing:-0.5 }}>
+              Hello, {(me.name||"there").split(" ")[0]} {me.emoji || ""}
+            </div>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13.5, color:C.textMid, marginTop:5, lineHeight:1.5 }}>
+              {loading ? "\u00A0" : sanduqs.length === 0
+                ? "Welcome to Sanduq; the platform where friends save together and decide together!"
+                : "Welcome back to Sanduq. Let's make things happen :)"}
+            </div>
+            <div style={{ display:"flex", gap:9, marginTop:14 }}>
+              {[
+                { emoji:"➕", label:"Create", fg:C.teal||C.green, bg:C.greenLt||"rgba(17,140,140,.12)", on:()=>setScreen("create") },
+                { emoji:"🔑", label:"Join", fg:C.blue, bg:C.blueLt, on:()=>{ const el=document.getElementById("join-code-input"); if(el){ el.scrollIntoView({behavior:"smooth",block:"center"}); el.focus(); } } },
+                { emoji:"👥", label:"Invite", fg:C.purpleBright||C.purple, bg:C.purpleLt, on:()=>setScreen("profile") },
+              ].map(a => (
+                <button key={a.label} onClick={a.on} style={{ flex:1, background:a.bg, border:"none", borderRadius:14, padding:"13px 6px", textAlign:"center", cursor:"pointer" }}>
+                  <div style={{ fontSize:20, marginBottom:4 }}>{a.emoji}</div>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11.5, fontWeight:700, color:a.fg }}>{a.label}</div>
+                </button>
+              ))}
             </div>
           </div>
-          )}
 
           {/* Category chips — only show categories you actually have */}
           {!loading && sanduqs.length > 0 && (() => {
@@ -3681,7 +3732,7 @@ export default function App() {
             {LIVE && !loading && (
               <div style={{ marginBottom:16 }}>
                 <div style={{ display:"flex", gap:8 }}>
-                  <input value={joinCode} onChange={e=>setJoinCode(e.target.value)} placeholder="Enter a join code…" style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text }} />
+                  <input id="join-code-input" value={joinCode} onChange={e=>setJoinCode(e.target.value)} placeholder="Enter a join code…" style={{ flex:1, background:C.surface, border:`1px solid ${C.border}`, borderRadius:12, padding:"12px 14px", fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.text }} />
                   <button onClick={handleJoin} disabled={!joinCode.trim() || joinBusy} style={{ padding:"0 18px", borderRadius:12, background:joinCode.trim()?C.green:C.surface2, border:`1px solid ${joinCode.trim()?C.green:C.border}`, fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:700, color:joinCode.trim()?"#FFFFFF":C.textDim, cursor:joinCode.trim()?"pointer":"default" }}>{joinBusy?"…":"Join"}</button>
                 </div>
                 {joinErr && <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.red, marginTop:8 }}>{joinErr}</div>}
