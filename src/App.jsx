@@ -59,6 +59,11 @@ const C = {
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');`;
 
+// Canonical public URL for share/invite links. Always use the clean custom
+// domain so invites never leak the vercel.app URL, no matter where the app
+// happens to be loaded from.
+const SITE_URL = "https://sanduq.app";
+
 // ── Data ──────────────────────────────────────────────────────
 const ME = { id: 1, name: "Demo User", initials: "DU", color: "#3B8EF5" };
 const MCOLS = ["#3B8EF5","#5AC8FA","#8B7BF0","#F5A623","#E07AC0","#F0556B","#3DD6D0","#F0824D","#A99BF5","#60D9FA"];
@@ -3091,7 +3096,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             Share the code or link. Friends enter the code on their home screen, or tap the link to join instantly.
           </div>
           {(() => {
-            const link = `${window.location.origin}/?join=${group.id}`;
+            const link = `${SITE_URL}/?join=${group.id}`;
             const code = g.join_code || "";
             return (
               <>
