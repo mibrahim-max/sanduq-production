@@ -2707,7 +2707,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
       </div>
 
       {themePicker && (
-        <div onClick={()=>!themeBusy&&setThemePicker(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+        <div onClick={()=>!themeBusy&&setThemePicker(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"22px 18px 32px", width:"100%", maxWidth:460, maxHeight:"86vh", overflowY:"auto", border:`1px solid ${C.border}` }}>
             <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 16px" }} />
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:19, fontWeight:800, color:C.text, marginBottom:4 }}>Choose a theme</div>
@@ -2742,7 +2742,7 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         const memberCount = detail ? detail.members.filter(m=>!m.removed).length : 0;
         const canEditTerms = memberCount < 3;
         return (
-        <div onClick={()=>!edBusy&&setEditing(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+        <div onClick={()=>!edBusy&&setEditing(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
           <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"22px 20px 32px", width:"100%", maxWidth:440, maxHeight:"88vh", overflowY:"auto", border:`1px solid ${C.border}` }}>
             <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 18px" }} />
             <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:19, fontWeight:800, color:C.text, marginBottom:18 }}>Edit Sanduq</div>
@@ -3201,8 +3201,8 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
         const isTreas = profileMember.member_id === g?.treasurer_id;
         const isMe = profileMember.member_id === myId;
         return (
-          <div onClick={()=>setProfileMember(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:140, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-            <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"20px 20px 32px", width:"100%", maxWidth:460, border:`1px solid ${C.border}` }}>
+          <div onClick={()=>setProfileMember(null)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+            <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"20px 20px calc(32px + env(safe-area-inset-bottom))", width:"100%", maxWidth:460, border:`1px solid ${C.border}` }}>
               <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 20px" }} />
               <div style={{ display:"flex", flexDirection:"column", alignItems:"center", marginBottom:18 }}>
                 <EmojiAvatar emoji={p.avatar_emoji} color={p.avatar_color||C.blue} name={p.display_name} size={72} />
@@ -3289,7 +3289,13 @@ export default function App() {
       // Account is gone — drop back to the signed-out welcome screen.
       window.location.href = "/";
     } catch (e) {
-      setDeleteErr(e.message || "Could not delete account.");
+      const raw = e?.message || "";
+      // Show the helpful transfer message as-is; otherwise a friendly fallback
+      // (never surface raw Postgres constraint errors to the user).
+      const friendly = /organizer of|treasurer of/i.test(raw)
+        ? raw
+        : "Something went wrong and your account wasn't deleted. Please try again, or contact support if it keeps happening.";
+      setDeleteErr(friendly);
       setDeleteBusy(false);
     }
   }
@@ -4087,8 +4093,8 @@ export default function App() {
       {screen==="profile" && (
         <div>
           {avatarOpen && (
-            <div onClick={()=>!avatarBusy&&setAvatarOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:120, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"18px 18px 30px", width:"100%", maxWidth:460, maxHeight:"88dvh", overflowY:"auto", overscrollBehavior:"contain", border:`1px solid ${C.border}` }}>
+            <div onClick={()=>!avatarBusy&&setAvatarOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:300, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"18px 18px calc(30px + env(safe-area-inset-bottom))", width:"100%", maxWidth:460, maxHeight:"88dvh", overflowY:"auto", overscrollBehavior:"contain", border:`1px solid ${C.border}` }}>
                 <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 16px" }} />
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:800, color:C.text, textAlign:"center", marginBottom:4 }}>Pick your avatar</div>
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:C.textMid, textAlign:"center", marginBottom:16 }}>Choose an emoji and a color.</div>
@@ -4115,8 +4121,8 @@ export default function App() {
             </div>
           )}
           {deleteOpen && (
-            <div onClick={()=>!deleteBusy&&setDeleteOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:120, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"24px 20px 32px", width:"100%", maxWidth:460, border:`1px solid ${C.border}` }}>
+            <div onClick={()=>!deleteBusy&&setDeleteOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:220, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"24px 20px calc(32px + env(safe-area-inset-bottom))", width:"100%", maxWidth:460, border:`1px solid ${C.border}` }}>
                 <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 18px" }} />
                 <div style={{ fontSize:30, textAlign:"center", marginBottom:10 }}>⚠️</div>
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:20, fontWeight:800, color:C.text, textAlign:"center", marginBottom:8 }}>Delete your account?</div>
@@ -4137,8 +4143,8 @@ export default function App() {
           )}
           {/* Settings sheet */}
           {settingsOpen && (
-            <div onClick={()=>setSettingsOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:100, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
-              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"14px 20px 40px", width:"100%", maxWidth:440, maxHeight:"85dvh", overflowY:"auto", overscrollBehavior:"contain", WebkitOverflowScrolling:"touch", border:`1px solid ${C.border}` }}>
+            <div onClick={()=>setSettingsOpen(false)} style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.6)", zIndex:210, display:"flex", alignItems:"flex-end", justifyContent:"center" }}>
+              <div onClick={e=>e.stopPropagation()} style={{ background:C.surface, borderTopLeftRadius:24, borderTopRightRadius:24, padding:"14px 20px calc(96px + env(safe-area-inset-bottom))", width:"100%", maxWidth:440, maxHeight:"85dvh", overflowY:"auto", overscrollBehavior:"contain", WebkitOverflowScrolling:"touch", border:`1px solid ${C.border}` }}>
                 <div style={{ width:38, height:4, borderRadius:2, background:C.border2, margin:"0 auto 18px" }} />
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:22 }}>
                   <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:22, fontWeight:800, color:C.text }}>Profile Settings</div>
