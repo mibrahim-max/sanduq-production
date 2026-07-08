@@ -1519,7 +1519,7 @@ function GroupScreen({ group: g, onBack, onComplete }) {
 
 function CreateScreen({ onBack, onCreate }) {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState({ name:"", goal:"", monthly:"", cat:"", exitPolicy:"pot", joinPolicy:"catchup", kind:"", eventDate:"" });
+  const [form, setForm] = useState({ name:"", goal:"", monthly:"", cat:"", exitPolicy:"pot", joinPolicy:"catchup", kind:"", eventDate:"", noGoal:false, joinFeeOn:false, joinFee:"" });
   const [createBusy, setCreateBusy] = useState(false);
   const [createErr, setCreateErr] = useState(null);
   async function handleCreate() {
@@ -1535,8 +1535,12 @@ function CreateScreen({ onBack, onCreate }) {
   const can1 = form.name.trim().length > 0 && form.cat;
   const goalAmt = parseAmount(form.goal);
   const monthlyAmt = parseAmount(form.monthly);
-  const can2 = goalAmt.valid && monthlyAmt.valid && monthlyAmt.value <= goalAmt.value;
-  const months = can2 ? Math.ceil(goalAmt.value/(monthlyAmt.value*3)) : null;
+  const joinFeeAmt = parseAmount(form.joinFee);
+  // No-goal pots only need a valid monthly; goal-based need goal >= monthly.
+  const can2 = form.noGoal
+    ? monthlyAmt.valid
+    : (goalAmt.valid && monthlyAmt.valid && monthlyAmt.value <= goalAmt.value);
+  const months = (!form.noGoal && can2) ? Math.ceil(goalAmt.value/(monthlyAmt.value*3)) : null;
 
   const EXIT_OPTIONS = [
     { id:"refund", label:"Refund on exit",  desc:"Members get their contributions back if they leave" },
@@ -1622,7 +1626,30 @@ function CreateScreen({ onBack, onCreate }) {
         )}
         {step===2 && form.kind!=="event" && (
           <div>
-            {[{label:"Total goal",key:"goal",hint:"How much is your group saving toward?"},{label:"Monthly per member",key:"monthly",hint:"How much does each member pay monthly?"}].map(f => (
+            {/* Purpose: goal-based vs ongoing collection */}
+            <SurfaceCard>
+              <Eyebrow>What's this pot for?</Eyebrow>
+              {[
+                { on:false, emoji:"🎯", title:"Saving toward a goal", desc:"A target amount — a trip, a gift, an event. Track progress as it fills." },
+                { on:true,  emoji:"🔁", title:"Ongoing collection", desc:"No target. Collect monthly dues or an open kitty, for as long as you like." },
+              ].map(o => (
+                <button key={String(o.on)} onClick={()=>upd("noGoal",o.on)} style={{ display:"flex", alignItems:"flex-start", gap:11, width:"100%", padding:13, borderRadius:12, marginBottom:8, background:form.noGoal===o.on?C.tealLt:C.surface2, border:`1.5px solid ${form.noGoal===o.on?C.teal:C.border}`, textAlign:"left", cursor:"pointer" }}>
+                  <div style={{ fontSize:22 }}>{o.emoji}</div>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.text }}>{o.title}</div>
+                    <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2, lineHeight:1.4 }}>{o.desc}</div>
+                  </div>
+                  <div style={{ width:18, height:18, borderRadius:"50%", border:`2px solid ${form.noGoal===o.on?C.teal:C.border}`, background:form.noGoal===o.on?C.teal:"none", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, marginTop:2 }}>
+                    {form.noGoal===o.on && <div style={{ width:6, height:6, borderRadius:"50%", background:"#fff" }} />}
+                  </div>
+                </button>
+              ))}
+            </SurfaceCard>
+
+            {[
+              ...(form.noGoal ? [] : [{label:"Total goal",key:"goal",hint:"How much is your group saving toward?"}]),
+              {label:"Monthly per member",key:"monthly",hint:"How much does each member pay monthly?"}
+            ].map(f => (
               <SurfaceCard key={f.key}>
                 <Eyebrow>{f.label}</Eyebrow>
                 <div style={{ display:"flex", alignItems:"center", gap:4 }}>
@@ -1635,7 +1662,27 @@ function CreateScreen({ onBack, onCreate }) {
                 )}
               </SurfaceCard>
             ))}
-            {goalAmt.valid && monthlyAmt.valid && monthlyAmt.value > goalAmt.value && (
+
+            {/* Optional one-time joining fee */}
+            <SurfaceCard>
+              <div style={{ display:"flex", alignItems:"flex-start", justifyContent:"space-between", gap:10 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, fontWeight:700, color:C.text }}>One-time joining fee</div>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:2 }}>Optional · charged once when a member joins</div>
+                </div>
+                <button onClick={()=>upd("joinFeeOn",!form.joinFeeOn)} style={{ width:44, height:26, borderRadius:13, background:form.joinFeeOn?C.teal:C.border2, position:"relative", border:"none", cursor:"pointer", flexShrink:0 }}>
+                  <div style={{ width:20, height:20, borderRadius:"50%", background:"#fff", position:"absolute", top:3, left:form.joinFeeOn?21:3, transition:"left .15s" }} />
+                </button>
+              </div>
+              {form.joinFeeOn && (
+                <div style={{ display:"flex", alignItems:"center", gap:4, marginTop:12, background:C.surface2, border:`1px solid ${C.border}`, borderRadius:10, padding:"11px 13px" }}>
+                  <span style={{ fontFamily:"'DM Mono',monospace", fontSize:20, color:C.textDim }}>$</span>
+                  <input type="number" value={form.joinFee} onChange={e=>upd("joinFee",e.target.value)} placeholder="0" style={{ flex:1, border:"none", background:"none", fontFamily:"'DM Mono',monospace", fontSize:20, fontWeight:500, color:C.text, padding:0, outline:"none" }} />
+                </div>
+              )}
+            </SurfaceCard>
+
+            {!form.noGoal && goalAmt.valid && monthlyAmt.valid && monthlyAmt.value > goalAmt.value && (
               <div style={{ background:C.redLt, border:`1px solid ${C.red}33`, borderRadius:12, padding:"12px 16px", marginBottom:12 }}>
                 <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:13, color:C.red, fontWeight:600 }}>Monthly contribution can't be more than the total goal.</div>
               </div>
@@ -1677,7 +1724,15 @@ function CreateScreen({ onBack, onCreate }) {
               <Divider />
               {(form.kind==="event"
                 ? [{l:"Type",v:"Event split"}, ...(form.eventDate?[{l:"Date",v:new Date(form.eventDate+"T00:00:00").toLocaleDateString(undefined,{month:"short",day:"numeric",year:"numeric"})}]:[]), {l:"Cost split",v:"Set after RSVPs"}, {l:"Your role",v:"Organizer"}]
-                : [{l:"Total goal",v:`$${goalAmt.value.toLocaleString()}`},{l:"Monthly per member",v:`$${monthlyAmt.value.toLocaleString()}`},{l:"Payment schedule",v:"1st of every month"},{l:"Min. members",v:"3"},{l:"Governance",v:"Simple majority"},{l:"Exit policy",v:EXIT_OPTIONS.find(o=>o.id===form.exitPolicy)?.label},{l:"Your role",v:"Treasurer"}]
+                : [
+                    {l:"Type",v:form.noGoal?"Ongoing collection":"Savings pot"},
+                    ...(form.noGoal?[]:[{l:"Total goal",v:`$${goalAmt.value.toLocaleString()}`}]),
+                    {l:"Monthly per member",v:`$${monthlyAmt.value.toLocaleString()}`},
+                    ...(form.joinFeeOn&&joinFeeAmt.valid?[{l:"Joining fee",v:`$${joinFeeAmt.value.toLocaleString()} once`}]:[]),
+                    {l:"Payment schedule",v:"1st of every month"},
+                    {l:"Exit policy",v:EXIT_OPTIONS.find(o=>o.id===form.exitPolicy)?.label},
+                    {l:"Your role",v:"Treasurer"}
+                  ]
               ).map((r,i,arr) => (
                 <div key={r.l}>
                   <div style={{ display:"flex", justifyContent:"space-between", padding:"12px 0" }}>
@@ -2562,6 +2617,16 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
     return m?.profiles?.display_name || null;
   };
   const [xferBusy, setXferBusy] = useState(false);
+  async function shareGroup() {
+    const link = `${SITE_URL}/?join=${group.id}`;
+    const code = g?.join_code || "";
+    const text = `Join "${group.name}" on Sanduq${code?` — code ${code}`:""}`;
+    try {
+      if (navigator.share) { await navigator.share({ title:`Join ${group.name} on Sanduq`, text, url:link }); return; }
+    } catch { /* user cancelled or unsupported — fall through to copy */ }
+    try { await navigator.clipboard?.writeText(link); setShareCopied(true); setTimeout(()=>setShareCopied(false), 1800); } catch {}
+  }
+  const [shareCopied, setShareCopied] = useState(false);
   const [profileMember, setProfileMember] = useState(null); // member obj for profile modal
   const [copiedHandle, setCopiedHandle] = useState(null);
   // Normalize payment_handles (jsonb: array of strings or {app,handle}) → [{app,handle}]
@@ -2642,6 +2707,9 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
             <div style={{ fontFamily:theme.font, fontSize:theme.titleSize||28, fontWeight:theme.tw, color:theme.titleColor, letterSpacing:theme.ls, lineHeight:1.05 }}>{group.name}</div>
             <div style={{ fontFamily:theme.bodyFont||"'DM Sans',sans-serif", fontSize:13, color:theme.sub, marginTop:4 }}>{g && g.kind==="event" && g.event_date ? `${new Date(g.event_date+"T00:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"})} · ` : `Started ${group.started} · `}{detail ? detail.members.filter(m=>!m.removed).length : "…"} member{detail && detail.members.filter(m=>!m.removed).length===1?"":"s"}</div>
           </div>
+          <button onClick={()=>shareGroup()} title="Share this Sanduq" style={{ width:40, height:40, borderRadius:"50%", background:theme.chip, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginRight:8 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.chipText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          </button>
           <button onClick={()=>setThemePicker(true)} title="Change theme" style={{ width:40, height:40, borderRadius:"50%", background:theme.chip, border:"none", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", flexShrink:0, marginRight:8 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.chipText} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5" fill={theme.chipText}/><circle cx="17.5" cy="10.5" r=".5" fill={theme.chipText}/><circle cx="8.5" cy="7.5" r=".5" fill={theme.chipText}/><circle cx="6.5" cy="12.5" r=".5" fill={theme.chipText}/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
           </button>
@@ -2677,18 +2745,56 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
 
       {/* Progress card — themed glass (savings only; events have their own) */}
       {detail && g.kind!=="event" && (
-        <div style={{ margin:"6px 16px 0", position:"relative", zIndex:1, background:theme.glass, border:`1px solid ${theme.glassBorder}`, borderRadius:18, padding:"18px 20px", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)" }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:10 }}>
-            <span style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:500, color:theme.glassText, letterSpacing:-1 }}>${(potCents/100).toLocaleString()}</span>
-            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:theme.glassSub }}>of ${(g.goal_cents/100).toLocaleString()}</span>
+        g.no_goal ? (
+          // Ongoing collection: running total, no goal bar.
+          <div style={{ margin:"6px 16px 0", position:"relative", zIndex:1, background:theme.glass, border:`1px solid ${theme.glassBorder}`, borderRadius:18, padding:"18px 20px", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)" }}>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:11, fontWeight:700, letterSpacing:1, textTransform:"uppercase", color:theme.glassSub }}>Collected so far</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:32, fontWeight:500, color:theme.glassText, letterSpacing:-1, marginTop:4 }}>${(potCents/100).toLocaleString()}</div>
+            <div style={{ display:"flex", gap:8, marginTop:12 }}>
+              <div style={{ flex:1, background:theme.chip, borderRadius:10, padding:"9px 11px" }}>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:10.5, color:theme.glassSub, fontWeight:600 }}>Monthly due</div>
+                <div style={{ fontFamily:"'DM Mono',monospace", fontSize:15, color:theme.glassText, marginTop:2 }}>${(g.monthly_cents/100).toLocaleString()}/mo</div>
+              </div>
+              {g.join_fee_cents > 0 && (
+                <div style={{ flex:1, background:theme.chip, borderRadius:10, padding:"9px 11px" }}>
+                  <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:10.5, color:theme.glassSub, fontWeight:600 }}>🎫 Joining fee</div>
+                  <div style={{ fontFamily:"'DM Mono',monospace", fontSize:15, color:theme.glassText, marginTop:2 }}>${(g.join_fee_cents/100).toLocaleString()}</div>
+                </div>
+              )}
+            </div>
           </div>
-          <div style={{ height:7, background:theme.track, borderRadius:5, overflow:"hidden" }}><div style={{ width:`${Math.min(100, 100*potCents/g.goal_cents)}%`, height:"100%", background:theme.accent, borderRadius:5 }} /></div>
-          <div style={{ display:"flex", justifyContent:"space-between", marginTop:8 }}>
-            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:theme.glassText }}>{Math.round(100*potCents/g.goal_cents)}% funded</span>
-            <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:theme.glassSub }}>${((g.goal_cents-potCents)/100).toLocaleString()} to go</span>
+        ) : (
+          <div style={{ margin:"6px 16px 0", position:"relative", zIndex:1, background:theme.glass, border:`1px solid ${theme.glassBorder}`, borderRadius:18, padding:"18px 20px", backdropFilter:"blur(8px)", WebkitBackdropFilter:"blur(8px)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end", marginBottom:10 }}>
+              <span style={{ fontFamily:"'DM Mono',monospace", fontSize:30, fontWeight:500, color:theme.glassText, letterSpacing:-1 }}>${(potCents/100).toLocaleString()}</span>
+              <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:theme.glassSub }}>of ${(g.goal_cents/100).toLocaleString()}</span>
+            </div>
+            <div style={{ height:7, background:theme.track, borderRadius:5, overflow:"hidden" }}><div style={{ width:`${Math.min(100, 100*potCents/g.goal_cents)}%`, height:"100%", background:theme.accent, borderRadius:5 }} /></div>
+            <div style={{ display:"flex", justifyContent:"space-between", marginTop:8 }}>
+              <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, fontWeight:600, color:theme.glassText }}>{Math.round(100*potCents/g.goal_cents)}% funded</span>
+              <span style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12.5, color:theme.glassSub }}>${((g.goal_cents-potCents)/100).toLocaleString()} to go</span>
+            </div>
           </div>
-        </div>
+        )
       )}
+
+      {/* One-time joining fee — shown to a member who hasn't paid it yet */}
+      {detail && g.kind!=="event" && g.join_fee_cents > 0 && (() => {
+        const mine = detail.members.find(m => m.member_id === myId);
+        if (!mine || mine.join_fee_paid) return null;
+        return (
+          <div style={{ margin:"12px 16px 0", position:"relative", zIndex:1, background:C.surface, border:`1.5px solid ${C.amber}55`, borderRadius:16, padding:"15px 16px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:11 }}>
+              <div style={{ fontSize:22 }}>🎫</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, color:C.text }}>One-time joining fee</div>
+                <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:12, color:C.textMid, marginTop:1 }}>${(g.join_fee_cents/100).toLocaleString()} · pay the organizer directly</div>
+              </div>
+            </div>
+            <button onClick={async ()=>{ try { if (DB.payJoinFee) { await DB.payJoinFee(group.id, true); await load(); } } catch {} }} style={{ width:"100%", marginTop:12, background:C.amber, color:"#fff", border:"none", borderRadius:12, padding:13, fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:700, cursor:"pointer" }}>I sent my ${(g.join_fee_cents/100).toLocaleString()} joining fee</button>
+          </div>
+        );
+      })()}
 
       {/* Content sits directly on the themed world — fully immersive. */}
       <div style={{ position:"relative", zIndex:2, marginTop:14, minHeight:"60vh" }}>
@@ -3194,6 +3300,12 @@ function LiveGroupScreen({ group, myId, onBack, onChanged }) {
       </div>
       </div>{/* end content sheet */}
 
+      {shareCopied && (
+        <div style={{ position:"fixed", left:"50%", bottom:100, transform:"translateX(-50%)", zIndex:300, background:C.text, color:"#fff", padding:"11px 18px", borderRadius:24, fontFamily:"'DM Sans',sans-serif", fontSize:13.5, fontWeight:600, boxShadow:"0 6px 20px rgba(0,0,0,.25)" }}>
+          ✓ Invite link copied
+        </div>
+      )}
+
       {/* Member profile modal */}
       {profileMember && (() => {
         const p = profileMember.profiles || {};
@@ -3240,6 +3352,7 @@ export default function App() {
   const [booting, setBooting] = useState(LIVE);
   const [loading, setLoading] = useState(false);
   const [screen, setScreen] = useState("home");
+  const [justCreated, setJustCreated] = useState(null); // {id, name, code} → shows invite screen
   const [activeGroup, setActiveGroup] = useState(null);
   const [activeLiveGroup, setActiveLiveGroup] = useState(null);
   const [myId, setMyId] = useState(null);
@@ -3590,31 +3703,68 @@ export default function App() {
     </div>
   );
 
+  if (justCreated) return (
+    <div style={{ minHeight:"100vh", background:C.bg, display:"flex", flexDirection:"column", padding:"52px 20px 32px" }}>
+      <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", maxWidth:440, margin:"0 auto", width:"100%" }}>
+        <div style={{ textAlign:"center", marginBottom:8 }}>
+          <div style={{ fontSize:52 }}>🎉</div>
+          <div style={{ fontFamily:"'Bricolage Grotesque','DM Sans',sans-serif", fontSize:24, fontWeight:800, color:C.text, marginTop:10, letterSpacing:-0.5 }}>"{justCreated.name}" is live!</div>
+          <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:14, color:C.textMid, marginTop:8, lineHeight:1.5 }}>Now invite the group. Sharing is how everyone joins.</div>
+        </div>
+        {justCreated.code && (
+          <div style={{ background:C.surface, borderRadius:16, padding:"18px 16px", marginTop:24, textAlign:"center", border:`1px solid ${C.border}` }}>
+            <div style={{ fontFamily:"'DM Sans',sans-serif", fontSize:10.5, fontWeight:700, letterSpacing:1.5, textTransform:"uppercase", color:C.textDim }}>Join code</div>
+            <div style={{ fontFamily:"'DM Mono',monospace", fontSize:28, fontWeight:600, color:C.teal||C.blue, letterSpacing:3, marginTop:6 }}>{justCreated.code}</div>
+          </div>
+        )}
+        <button onClick={async ()=>{
+          const link = `${SITE_URL}/?join=${justCreated.id}`;
+          const text = `Join "${justCreated.name}" on Sanduq${justCreated.code?` — code ${justCreated.code}`:""}`;
+          try { if (navigator.share) { await navigator.share({ title:`Join ${justCreated.name} on Sanduq`, text, url:link }); return; } } catch {}
+          try { await navigator.clipboard?.writeText(link); } catch {}
+        }} style={{ width:"100%", marginTop:14, background:C.blue, color:"#fff", border:"none", borderRadius:14, padding:16, fontFamily:"'DM Sans',sans-serif", fontSize:15, fontWeight:700, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:9 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+          Share invite
+        </button>
+        <button onClick={()=>{ setJustCreated(null); setScreen("home"); }} style={{ width:"100%", marginTop:10, background:"none", border:"none", fontFamily:"'DM Sans',sans-serif", fontSize:14, fontWeight:600, color:C.textMid, cursor:"pointer", padding:12 }}>Skip for now</button>
+      </div>
+    </div>
+  );
+
   if (screen==="create") return (
     <div>
       <style>{`${FONTS}*{box-sizing:border-box;margin:0;padding:0}button{cursor:pointer;font-family:'DM Sans',sans-serif}input{outline:none}@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}`}</style>
       <CreateScreen onBack={()=>setScreen("home")} onCreate={LIVE ? async (form) => {
+        let newId;
         if (form.kind === "event") {
           // Event split: no goal/monthly. The price is set later, in-app.
-          await DB.createGroup({
+          newId = await DB.createGroup({
             name: form.name.trim(), category: form.cat || "Other",
             goalCents: 0, monthlyCents: 0,
             joinPolicy: form.joinPolicy, exitPolicy: form.exitPolicy,
             kind: "event", eventDate: form.eventDate || null,
           });
-          await loadLive();
-          return;
+        } else {
+          const goal = parseAmount(form.goal);
+          const monthly = parseAmount(form.monthly);
+          if (!monthly.valid) throw new Error("Check the monthly amount");
+          if (!form.noGoal && !goal.valid) throw new Error("Check the goal amount");
+          const joinFee = parseAmount(form.joinFee);
+          newId = await DB.createGroup({
+            name: form.name.trim(), category: form.cat || "Other",
+            goalCents: form.noGoal ? 0 : Math.round(goal.value * 100),
+            monthlyCents: Math.round(monthly.value * 100),
+            joinPolicy: form.joinPolicy, exitPolicy: form.exitPolicy,
+            kind: "savings",
+            noGoal: !!form.noGoal,
+            joinFeeCents: (form.joinFeeOn && joinFee.valid) ? Math.round(joinFee.value * 100) : 0,
+          });
         }
-        const goal = parseAmount(form.goal);
-        const monthly = parseAmount(form.monthly);
-        if (!goal.valid || !monthly.valid) throw new Error("Check the goal and monthly amounts");
-        await DB.createGroup({
-          name: form.name.trim(), category: form.cat || "Other",
-          goalCents: Math.round(goal.value * 100), monthlyCents: Math.round(monthly.value * 100),
-          joinPolicy: form.joinPolicy, exitPolicy: form.exitPolicy,
-          kind: "savings",
-        });
         await loadLive();
+        // Surface the invite screen so sharing is the natural next step.
+        let code = "";
+        try { const rows = await DB.fetchMyGroups(); code = (rows.find(r=>r.id===newId)?.join_code) || ""; } catch {}
+        setJustCreated({ id:newId, name:form.name.trim(), code });
       } : undefined} />
     </div>
   );
