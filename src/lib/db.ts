@@ -86,12 +86,14 @@ export async function createGroup(input: {
   name: string; category: string; goalCents: number; monthlyCents: number;
   joinPolicy: "catchup" | "prorata" | "closed"; exitPolicy: "refund" | "pot" | "vote";
   kind?: "savings" | "event"; eventDate?: string | null;
+  noGoal?: boolean; joinFeeCents?: number;
 }): Promise<string> {
   const { data, error } = await sb().rpc("rpc_create_group", {
     p_name: input.name, p_category: input.category,
     p_goal_cents: input.goalCents, p_monthly_cents: input.monthlyCents,
     p_join_policy: input.joinPolicy, p_exit_policy: input.exitPolicy,
     p_kind: input.kind || "savings", p_event_date: input.eventDate || null,
+    p_no_goal: input.noGoal || false, p_join_fee_cents: input.joinFeeCents || 0,
   });
   if (error) throw new Error(error.message);
   const gid = data as string;
@@ -101,6 +103,16 @@ export async function createGroup(input: {
     if (themeId && themeId !== "minimal_light") await setTheme(gid, themeId);
   } catch { /* non-fatal: group still created on minimal_light default */ }
   return gid;
+}
+
+// One-time joining fee attestations.
+export async function payJoinFee(groupId: string, paid = true): Promise<void> {
+  const { error } = await sb().rpc("rpc_pay_join_fee", { p_group: groupId, p_paid: paid });
+  if (error) throw new Error(error.message);
+}
+export async function setJoinFeeFor(groupId: string, memberId: string, paid: boolean): Promise<void> {
+  const { error } = await sb().rpc("rpc_set_join_fee_for", { p_group: groupId, p_member: memberId, p_paid: paid });
+  if (error) throw new Error(error.message);
 }
 
 export async function editGroupMeta(groupId: string, name: string, category: string): Promise<void> {
